@@ -1,0 +1,6 @@
+{
+  "name": "Silver Mist Multiservices - In-Cabin Tablet Kiosk",
+  "description": "Horizontal 10-inch Android tablet interactive kiosk for rideshare vehicles, featuring passenger music & requests hub and Silvermyst Multiservices (silvermyst.com) driver showcase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
