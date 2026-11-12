@@ -1,4 +1,4 @@
-import { DriverProfile, FoodItem, MultiserviceItem, PlaylistTrack, LocalAttraction, GalleryItem, GalleryAlbum, ScreensaverSettings, ScreensaverSlideItem, InstalledAppItem } from '../types/kiosk';
+import { DriverProfile, FoodItem, MultiserviceItem, PlaylistTrack, LocalAttraction, GalleryItem, GalleryAlbum, ScreensaverSettings, ScreensaverSlideItem, InstalledAppItem, QuickConnectItem } from '../types/kiosk';
 
 export const INITIAL_GALLERY_ALBUMS: GalleryAlbum[] = [
   {
@@ -176,6 +176,7 @@ export const CARLOS_PHOTO_GALLERY: GalleryItem[] = [
 ];
 
 export const INITIAL_DRIVER_PROFILE: DriverProfile = {
+  id: 'driver-carlos',
   name: 'Carlos R.',
   avatarUrl: '/src/assets/images/driver_carlos_portrait_1794247172029.jpg',
   title: 'Founder & Professional Chauffeur',
@@ -196,7 +197,45 @@ export const INITIAL_DRIVER_PROFILE: DriverProfile = {
   whatsapp: '+15743876229',
   bio: 'Welcome! I am Carlos, founder of Silvermyst Multiservices (silvermyst.com). We provide executive rides, PC/Mac computer repair, webmaster services, social media marketing, and photography. Scan the QR code or tap above to check out our full portfolio and services!',
   funFact: 'Operating in Indiana & surrounding metro areas. From solving tough tech issues to capturing great photos and driving safely, I love providing great service.',
+  role: 'owner',
+  availability: 'available',
+  assignedTabletId: 'tablet-samsung-10-01',
+  isVisibleToPassengers: true,
 };
+
+export const INITIAL_MANYELL_PROFILE: DriverProfile = {
+  id: 'driver-manyell',
+  name: 'Manyell M.',
+  avatarUrl: '/assets/aistudio/1672373005387_54b82b85.jpg',
+  title: 'Executive Chauffeur & Logistics Specialist',
+  companyName: 'Silvermyst Multiservices',
+  tagline: 'VIP Chauffeur • Safe Travels • Punctual Service',
+  rating: 4.98,
+  totalTrips: 2940,
+  yearsDriving: 5,
+  languages: ['English', 'Español'],
+  vehicleModel: 'Executive SUV',
+  vehicleYear: '2025 Edition',
+  cleanlinessScore: '100% Sanitized & Clean',
+  phone: '(574) 387-6229',
+  email: 'manyell@silvermyst.com',
+  website: 'https://silvermyst.com/',
+  instagram: 'silvermyst_multiservices',
+  linktree: 'silvermyst',
+  whatsapp: '+15743876229',
+  bio: 'Hello! I am Manyell with Silvermyst Multiservices. Dedicated to providing quiet, comfortable, reliable, and executive-level transportation for airport transfers and private bookings.',
+  funFact: 'Certified defensive driver, route navigation expert, and committed to 5-star customer comfort.',
+  role: 'driver',
+  availability: 'available',
+  assignedTabletId: 'tablet-samsung-10-02',
+  isVisibleToPassengers: true,
+};
+
+export const INITIAL_DRIVERS_LIST: DriverProfile[] = [
+  INITIAL_DRIVER_PROFILE,
+  INITIAL_MANYELL_PROFILE,
+];
+
 
 export const INITIAL_PLAYLIST_TRACKS: PlaylistTrack[] = [
   {
@@ -555,6 +594,19 @@ export const INITIAL_INSTALLED_APPS: InstalledAppItem[] = [
     isHiddenFromPassengers: false,
   },
   {
+    id: 'app-weather',
+    name: 'Weather & Forecast',
+    category: 'utilities',
+    packageName: 'internal.weather',
+    deepLinkUrl: 'internal.weather',
+    webFallbackUrl: 'https://weather.com',
+    iconType: 'custom',
+    accentColor: '#0284c7',
+    description: 'Check today’s weather or full week forecast by ZIP code',
+    badge: '7-Day Forecast',
+    isHiddenFromPassengers: false,
+  },
+  {
     id: 'game-subway',
     name: 'Subway Surfers',
     category: 'games',
@@ -698,4 +750,113 @@ export const INITIAL_INSTALLED_APPS: InstalledAppItem[] = [
     isHiddenFromPassengers: false,
   },
 ];
+
+export const INITIAL_QUICK_CONNECT_ITEMS: QuickConnectItem[] = [
+  {
+    id: 'qc-linktree',
+    title: 'Linktree Hub',
+    subtitle: 'All Links & Portals',
+    badge: 'Universal',
+    type: 'linktree',
+    handleOrValue: '@silvermyst',
+    url: 'https://linktr.ee/silvermyst',
+    qrValue: 'https://linktr.ee/silvermyst',
+    iconType: 'linktree',
+    accentColor: '#22c55e',
+    description: 'Direct link to all Silvermyst Multiservices booking, photography, and repair portals.',
+    isVisible: true,
+    order: 1,
+  },
+  {
+    id: 'qc-venmo',
+    title: 'Venmo Pay & Tip',
+    subtitle: 'Direct Payment',
+    badge: 'Instant Pay',
+    type: 'venmo',
+    handleOrValue: '@carlos881672',
+    url: 'https://venmo.com/u/carlos881672',
+    qrValue: 'https://venmo.com/u/carlos881672',
+    iconType: 'venmo',
+    accentColor: '#008cff',
+    description: 'Quick & secure Venmo transfers for private rides, tips, and service diagnostics.',
+    isVisible: true,
+    order: 2,
+  },
+  {
+    id: 'qc-cashapp',
+    title: 'Cash App',
+    subtitle: 'Instant Cash Tag',
+    badge: 'Quick Tip',
+    type: 'cashapp',
+    handleOrValue: '$carlos881672',
+    url: 'https://cash.app/$carlos881672',
+    qrValue: 'https://cash.app/$carlos881672',
+    iconType: 'cashapp',
+    accentColor: '#00d632',
+    description: 'Scan to pay or tip via Cash App with zero transaction fees.',
+    isVisible: true,
+    order: 3,
+  },
+  {
+    id: 'qc-instagram',
+    title: 'Instagram',
+    subtitle: '@silvermyst_multiservices',
+    badge: 'Photo & Stories',
+    type: 'instagram',
+    handleOrValue: '@silvermyst_multiservices',
+    url: 'https://instagram.com/silvermyst_multiservices',
+    qrValue: 'https://instagram.com/silvermyst_multiservices',
+    iconType: 'instagram',
+    accentColor: '#e1306c',
+    description: 'Follow our executive fleet adventures, customer highlights, and photography.',
+    isVisible: true,
+    order: 4,
+  },
+  {
+    id: 'qc-whatsapp',
+    title: 'WhatsApp Direct',
+    subtitle: 'Instant Messaging',
+    badge: 'Direct Chat',
+    type: 'whatsapp',
+    handleOrValue: '(574) 387-6229',
+    url: 'https://wa.me/15743876229',
+    qrValue: 'https://wa.me/15743876229',
+    iconType: 'whatsapp',
+    accentColor: '#25d366',
+    description: 'Chat directly with Carlos for instant ride reservations, quotes, and questions.',
+    isVisible: true,
+    order: 5,
+  },
+  {
+    id: 'qc-phone',
+    title: 'Direct Call / SMS',
+    subtitle: '(574) 387-6229',
+    badge: 'Phone',
+    type: 'phone',
+    handleOrValue: '(574) 387-6229',
+    url: 'tel:5743876229',
+    qrValue: 'tel:5743876229',
+    iconType: 'phone',
+    accentColor: '#8b5cf6',
+    description: 'Direct phone line for airport flight transfers and VIP chauffeur bookings.',
+    isVisible: true,
+    order: 6,
+  },
+  {
+    id: 'qc-website',
+    title: 'Official Website',
+    subtitle: 'silvermyst.com',
+    badge: 'Web Portal',
+    type: 'website',
+    handleOrValue: 'silvermyst.com',
+    url: 'https://silvermyst.com/',
+    qrValue: 'https://silvermyst.com/',
+    iconType: 'website',
+    accentColor: '#38bdf8',
+    description: 'Explore full services: computer repairs, webmaster services, and VIP chauffeur.',
+    isVisible: true,
+    order: 7,
+  },
+];
+
 

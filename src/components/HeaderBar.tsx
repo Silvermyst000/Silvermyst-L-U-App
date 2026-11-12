@@ -24,6 +24,8 @@ interface HeaderBarProps {
   onOpenPassengerRequests: () => void;
   viewMode: 'balanced' | 'carlos-expanded' | 'carlos-full';
   onViewModeChange: (mode: 'balanced' | 'carlos-expanded' | 'carlos-full') => void;
+  onOpenAdminDashboard?: () => void;
+  onOpenWeatherModal?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -35,6 +37,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenPassengerRequests,
   viewMode,
   onViewModeChange,
+  onOpenAdminDashboard,
+  onOpenWeatherModal,
 }) => {
   const [timeStr, setTimeStr] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -78,35 +82,28 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
       {/* Zone 1: Brand Wordmark & Crest */}
       <div className="flex items-center gap-4 shrink-0">
         <SilverMistLogo size="sm" showSubtitle={true} />
-        <div className="hidden xl:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800 text-sm text-slate-500 dark:text-slate-400">
-          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span className="font-medium">Executive In-Cabin Passenger Suite</span>
-        </div>
       </div>
 
       {/* Zone 2: Real-time In-Cabin Environmental Indicators */}
-      <div className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
+      <div className="flex items-center gap-2.5 sm:gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
         <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-2xs">
           <Clock className="w-4 h-4 text-slate-400" />
           <span className="tabular-nums font-bold text-slate-800 dark:text-slate-100 text-sm">{timeStr || '12:00 PM'}</span>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-2xs">
-          <Thermometer className="w-4 h-4 text-sky-500" />
-          <span className="tabular-nums text-sm font-semibold">71°F Climate</span>
-        </div>
-
         <button
           onClick={() => {
             playCabinChime('tap');
-            onOpenWifiModal();
+            onOpenWeatherModal?.();
           }}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200/70 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-colors cursor-pointer text-emerald-600 dark:text-emerald-400 shadow-2xs"
-          title="Vehicle 5G Guest Wi-Fi"
+          className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 shadow-2xs transition-colors cursor-pointer group"
+          title="Tap to view Live Weather, In-Cabin Climate & 7-Day Forecast by ZIP"
         >
-          <Wifi className="w-4 h-4 shrink-0" />
-          <span className="hidden md:inline font-bold text-sm">Guest Wi-Fi Active</span>
-          <span className="md:hidden font-bold text-sm">Wi-Fi</span>
+          <Thermometer className="w-4 h-4 text-sky-500 group-hover:scale-110 transition-transform" />
+          <span className="tabular-nums text-sm font-semibold">71°F Climate</span>
+          <span className="text-[10px] font-extrabold text-sky-600 dark:text-sky-400 uppercase px-1.5 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/20">
+            Weather
+          </span>
         </button>
 
         {/* Passenger Requests Button: Volume up/down, too cold/hot, any other request */}
@@ -164,17 +161,32 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             playCabinChime('tap');
             onOpenDriverQueue();
           }}
-          className="relative flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer shadow-2xs"
+          className="relative flex items-center gap-2 px-3.5 py-2.5 text-sm font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer shadow-2xs"
           title="Open Driver Queue & Requests Log"
         >
           <Bell className="w-4 h-4 text-sky-500" />
-          <span className="hidden lg:inline">Driver Queue</span>
+          <span className="hidden xl:inline">Queue</span>
           {pendingRequestsCount > 0 && (
             <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-amber-500 text-slate-950 tabular-nums animate-pulse">
               {pendingRequestsCount}
             </span>
           )}
         </button>
+
+        {/* Remote Web Administration Dashboard Switcher */}
+        {onOpenAdminDashboard && (
+          <button
+            onClick={() => {
+              playCabinChime('tap');
+              onOpenAdminDashboard();
+            }}
+            className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-extrabold rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-purple-300 hover:text-white border border-purple-800/40 transition-all cursor-pointer shadow-2xs"
+            title="Open Remote Web Administration Dashboard (Fleet & Buttons)"
+          >
+            <ShieldCheck className="w-4 h-4 text-purple-400" />
+            <span className="hidden md:inline">Admin Portal</span>
+          </button>
+        )}
 
         {/* Night / Dim Mode Toggle (essential for night driving so tablet doesn't blind driver) */}
         <button

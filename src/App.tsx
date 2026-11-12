@@ -7,13 +7,19 @@ import { WifiModal } from './components/WifiModal';
 import { PassengerRequestModal } from './components/PassengerRequestModal';
 import { TabletInstallModal } from './components/TabletInstallModal';
 import { Screensaver } from './components/Screensaver';
+import { WeatherAppModal } from './components/apps/WeatherAppModal';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { cloudSync } from './services/cloudSync';
+import { AdminPinModal } from './components/admin/AdminPinModal';
 import {
   INITIAL_DRIVER_PROFILE,
+  INITIAL_DRIVERS_LIST,
   INITIAL_PLAYLIST_TRACKS,
   DEFAULT_SCREENSAVER_SETTINGS,
   INITIAL_GALLERY_ALBUMS,
   CARLOS_PHOTO_GALLERY,
   INITIAL_INSTALLED_APPS,
+  INITIAL_QUICK_CONNECT_ITEMS,
 } from './data/mockData';
 import {
   SongRequest,
@@ -23,8 +29,9 @@ import {
   GalleryAlbum,
   GalleryItem,
   InstalledAppItem,
+  QuickConnectItem,
 } from './types/kiosk';
-import { ScreenShare, RotateCcw } from 'lucide-react';
+import { ScreenShare, RotateCcw, Sparkles, X } from 'lucide-react';
 
 export default function App() {
   // Theme state: defaults to dark for luxury vehicle cabin aesthetic
@@ -35,6 +42,12 @@ export default function App() {
 
   // Tablet orientation check
   const [isPortrait, setIsPortrait] = useState<boolean>(false);
+
+  // Interface Mode: Passenger Kiosk vs Remote Web Administration Dashboard
+  const [interfaceMode, setInterfaceMode] = useState<'kiosk' | 'admin'>('kiosk');
+
+  // Broadcast announcement banner from Admin to Kiosk tablets
+  const [broadcastAnnouncement, setBroadcastAnnouncement] = useState<string | null>(null);
 
   // Driver Profile with persistent storage (avatar icon, bio, vehicle, stats)
   const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
@@ -50,6 +63,104 @@ export default function App() {
       localStorage.setItem('silvermyst_driver_profile_v3', JSON.stringify(driverProfile));
     } catch (e) {}
   }, [driverProfile]);
+
+  // 4-Digit Security PIN for Administrator Portal (Default: 1229)
+  const [adminPin, setAdminPin] = useState<string>(() => {
+    try {
+      return localStorage.getItem('silvermyst_admin_pin_v1') || '1229';
+    } catch (e) {
+      return '1229';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('silvermyst_admin_pin_v1', adminPin);
+    } catch (e) {}
+  }, [adminPin]);
+
+  const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState<boolean>(false);
+
+  // Quick Connect & Tap-to-Scan Dock Items (Linktree, Venmo, Cash App, Instagram, etc.)
+  const [quickConnects, setQuickConnects] = useState<QuickConnectItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('silvermyst_quick_connects_v1');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return INITIAL_QUICK_CONNECT_ITEMS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('silvermyst_quick_connects_v1', JSON.stringify(quickConnects));
+    } catch (e) {}
+  }, [quickConnects]);
+
+  // Multiple Driver Profiles list (Carlos, Manyell, and additional custom drivers)
+  const [driversList, setDriversList] = useState<DriverProfile[]>(() => {
+    try {
+      const stored = localStorage.getItem('silvermyst_drivers_list_v1');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return INITIAL_DRIVERS_LIST;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('silvermyst_drivers_list_v1', JSON.stringify(driversList));
+    } catch (e) {}
+  }, [driversList]);
+
+  // Cloud Synchronization Listeners
+  useEffect(() => {
+    const unsubRequests = cloudSync.subscribeToRequests((cloudReqs) => {
+      if (cloudReqs && cloudReqs.length > 0) {
+        const songs: SongRequest[] = [];
+        const msgs: CabinMessage[] = [];
+        cloudReqs.forEach((item: any) => {
+          if (item.title && item.artist) {
+            songs.push(item as SongRequest);
+          } else if (item.text) {
+            msgs.push(item as CabinMessage);
+          }
+        });
+        if (songs.length > 0) setSongRequests(songs);
+        if (msgs.length > 0) setCabinMessages(msgs);
+      }
+    });
+
+    const unsubDrivers = cloudSync.subscribeToDrivers((cloudDrivers) => {
+      if (cloudDrivers && cloudDrivers.length > 0) {
+        const found = cloudDrivers.find((d) => d.id === driverProfile.id);
+        if (found) setDriverProfile(found);
+      }
+    });
+
+    const unsubApps = cloudSync.subscribeToApps((cloudApps) => {
+      if (cloudApps && cloudApps.length > 0) {
+        setInstalledApps(cloudApps);
+      }
+    });
+
+    // Report tablet heartbeat
+    cloudSync.reportTabletHeartbeat({
+      id: 'tablet-samsung-10-01',
+      name: 'Tablet 1 (Cadillac Escalade)',
+      assignedDriverId: driverProfile.id,
+      vehicleModel: driverProfile.vehicleModel,
+      status: 'online',
+      lastSeen: Date.now(),
+      appVersion: 'v3.2.0-kiosk',
+      resolution: `${window.innerWidth} × ${window.innerHeight}`,
+      isLocked: true,
+    });
+
+    return () => {
+      unsubRequests();
+      unsubDrivers();
+      unsubApps();
+    };
+  }, [driverProfile.id]);
 
   // Gallery Albums with persistent storage (Categories, hidden flags)
   const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbum[]>(() => {
@@ -129,6 +240,7 @@ export default function App() {
   const [isWifiModalOpen, setIsWifiModalOpen] = useState<boolean>(false);
   const [isPassengerRequestModalOpen, setIsPassengerRequestModalOpen] = useState<boolean>(false);
   const [isTabletInstallOpen, setIsTabletInstallOpen] = useState<boolean>(false);
+  const [isWeatherModalOpen, setIsWeatherModalOpen] = useState<boolean>(false);
 
   // Screensaver Settings & State
   const [screensaverSettings, setScreensaverSettings] = useState<ScreensaverSettings>(() => {
@@ -215,7 +327,7 @@ export default function App() {
     );
   };
 
-  const handleSubmitSongRequest = (
+  const handleSubmitSongRequest = async (
     req: Omit<SongRequest, 'id' | 'requestedAt' | 'status'>
   ) => {
     const newRequest: SongRequest = {
@@ -223,11 +335,18 @@ export default function App() {
       id: `sr-${Date.now()}`,
       requestedAt: Date.now(),
       status: 'pending',
+      driverId: driverProfile.id,
     };
     setSongRequests((prev) => [newRequest, ...prev]);
+    await cloudSync.submitPassengerRequest({
+      id: newRequest.id,
+      type: 'custom',
+      text: `Song Request: "${newRequest.title}" by ${newRequest.artist}${newRequest.note ? ` (${newRequest.note})` : ''}`,
+      driverId: driverProfile.id,
+    } as any);
   };
 
-  const handleSendMessage = (
+  const handleSendMessage = async (
     msg: Omit<CabinMessage, 'id' | 'sentAt' | 'status'>
   ) => {
     const newMsg: CabinMessage = {
@@ -235,8 +354,10 @@ export default function App() {
       id: `cm-${Date.now()}`,
       sentAt: Date.now(),
       status: 'sent',
+      driverId: driverProfile.id,
     };
     setCabinMessages((prev) => [newMsg, ...prev]);
+    await cloudSync.submitPassengerRequest(newMsg);
   };
 
   const handleUpdateSongStatus = (id: string, status: SongRequest['status']) => {
@@ -266,6 +387,42 @@ export default function App() {
   // External gallery trigger from App Drawer
   const [isGalleryExternalOpen, setIsGalleryExternalOpen] = useState<boolean>(false);
 
+  // If in Remote Web Administration Dashboard Mode
+  if (interfaceMode === 'admin') {
+    return (
+      <AdminDashboard
+        currentDriver={driverProfile}
+        onSelectDriver={(newDriver) => setDriverProfile(newDriver)}
+        onBackToKiosk={() => setInterfaceMode('kiosk')}
+        onSignOut={() => setInterfaceMode('kiosk')}
+        songRequests={songRequests}
+        onUpdateSongStatus={handleUpdateSongStatus}
+        cabinMessages={cabinMessages}
+        onUpdateMessageStatus={handleUpdateMessageStatus}
+        onClearCompletedRequests={handleClearCompleted}
+        screensaverSettings={screensaverSettings}
+        onUpdateScreensaverSettings={setScreensaverSettings}
+        onTriggerScreensaverNow={() => setIsScreensaverActive(true)}
+        albums={galleryAlbums}
+        onUpdateAlbums={setGalleryAlbums}
+        photos={galleryPhotos}
+        onUpdatePhotos={setGalleryPhotos}
+        installedApps={installedApps}
+        onUpdateInstalledApps={setInstalledApps}
+        quickConnects={quickConnects}
+        onUpdateQuickConnects={setQuickConnects}
+        driversList={driversList}
+        onUpdateDriversList={setDriversList}
+        adminPin={adminPin}
+        onUpdateAdminPin={setAdminPin}
+        onBroadcastAnnouncement={(text) => {
+          setBroadcastAnnouncement(text);
+          setTimeout(() => setBroadcastAnnouncement(null), 14000);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 antialiased selection:bg-sky-500 selection:text-white overflow-hidden">
       {/* Executive Header Bar */}
@@ -281,7 +438,25 @@ export default function App() {
         onOpenPassengerRequests={() => setIsPassengerRequestModalOpen(true)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        onOpenAdminDashboard={() => setInterfaceMode('admin')}
+        onOpenWeatherModal={() => setIsWeatherModalOpen(true)}
       />
+
+      {/* Broadcast Announcement Banner pushed from Remote Admin */}
+      {broadcastAnnouncement && (
+        <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 text-white px-5 py-2.5 text-xs sm:text-sm font-extrabold flex items-center justify-between shadow-lg z-30 shrink-0 border-b border-purple-400/40 animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+            <span>{broadcastAnnouncement}</span>
+          </div>
+          <button
+            onClick={() => setBroadcastAnnouncement(null)}
+            className="p-1 rounded-lg hover:bg-white/20 text-white cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Portrait helper alert if tablet is held vertically */}
       {isPortrait && (
@@ -377,6 +552,13 @@ export default function App() {
       <TabletInstallModal
         isOpen={isTabletInstallOpen}
         onClose={() => setIsTabletInstallOpen(false)}
+      />
+
+      {/* Interactive Live Weather & 7-Day Forecast Modal */}
+      <WeatherAppModal
+        isOpen={isWeatherModalOpen}
+        onClose={() => setIsWeatherModalOpen(false)}
+        onSendMessage={handleSendMessage}
       />
 
       {/* Full-Screen Inactivity Advertising Screensaver */}

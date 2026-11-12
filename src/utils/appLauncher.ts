@@ -5,6 +5,7 @@ interface LaunchCallbacks {
   onOpenGallery?: () => void;
   onOpenWifi?: () => void;
   onOpenComfort?: () => void;
+  onOpenWeather?: () => void;
   onSongRequest?: () => void;
   onNotifyLaunch?: (appName: string, message: string) => void;
 }
@@ -13,6 +14,12 @@ export function launchTabletApp(app: InstalledAppItem, callbacks: LaunchCallback
   playCabinChime('tap');
 
   // Handle internal app actions
+  if (app.packageName === 'internal.weather' || app.id === 'app-weather') {
+    if (callbacks.onOpenWeather) {
+      callbacks.onOpenWeather();
+      return;
+    }
+  }
   if (app.packageName === 'internal.gallery') {
     if (callbacks.onOpenGallery) callbacks.onOpenGallery();
     return;

@@ -18,9 +18,11 @@ import {
   ExternalLink,
   QrCode,
   Globe,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
-import { DriverProfile, FoodItem, MultiserviceItem, GalleryItem, GalleryAlbum } from '../types/kiosk';
-import { FAVORITE_FOODS, MULTISERVICES_LIST, CARLOS_PHOTO_GALLERY, INITIAL_GALLERY_ALBUMS } from '../data/mockData';
+import { DriverProfile, FoodItem, MultiserviceItem, GalleryItem, GalleryAlbum, QuickConnectItem } from '../types/kiosk';
+import { FAVORITE_FOODS, MULTISERVICES_LIST, CARLOS_PHOTO_GALLERY, INITIAL_GALLERY_ALBUMS, INITIAL_QUICK_CONNECT_ITEMS } from '../data/mockData';
 import { QRCodeView } from '../utils/qrCode';
 import { SocialModal, SocialModalData } from './SocialModal';
 import { DirectBookingModal } from './DirectBookingModal';
@@ -29,20 +31,27 @@ import { playCabinChime } from '../utils/cabinAudio';
 
 interface RightDriverHubProps {
   profile: DriverProfile;
+  drivers?: DriverProfile[];
+  onSelectDriver?: (driverId: string) => void;
   albums?: GalleryAlbum[];
   photos?: GalleryItem[];
+  quickConnects?: QuickConnectItem[];
   externalGalleryOpen?: boolean;
   onCloseExternalGallery?: () => void;
 }
 
 export const RightDriverHub: React.FC<RightDriverHubProps> = ({
   profile,
-  albums,
-  photos,
+  drivers = [],
+  onSelectDriver,
+  albums = INITIAL_GALLERY_ALBUMS,
+  photos = CARLOS_PHOTO_GALLERY,
+  quickConnects = INITIAL_QUICK_CONNECT_ITEMS,
   externalGalleryOpen = false,
   onCloseExternalGallery,
 }) => {
   const [activeTab, setActiveTab] = useState<'gallery' | 'about' | 'foods' | 'services'>('gallery');
+  const [isProfileExpanded, setIsProfileExpanded] = useState<boolean>(false);
   const [socialModalData, setSocialModalData] = useState<SocialModalData | null>(null);
   const [selectedService, setSelectedService] = useState<MultiserviceItem | null>(null);
 
@@ -134,133 +143,133 @@ export const RightDriverHub: React.FC<RightDriverHubProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-950 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs transition-colors overflow-hidden">
-      {/* Driver Profile Top Lockup with Scannable Linktree QR Code and Services CTA */}
-      <div className="flex items-start gap-4 sm:gap-5 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-        {/* Larger Portrait Photo with Expand Affordance */}
-        <div
-          onClick={() => {
-            playCabinChime('tap');
-            setIsLightboxOpen(true);
-          }}
-          className="relative w-26 h-26 sm:w-28 sm:h-28 rounded-3xl overflow-hidden shrink-0 border-2 border-slate-300 dark:border-slate-700 shadow-md cursor-pointer group"
-          title="Tap to view photo gallery"
-        >
-          <img
-            src={profile.avatarUrl}
-            alt={`${profile.name} - ${profile.companyName} Driver`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Maximize2 className="w-6 h-6 text-white drop-shadow" />
-          </div>
-          <div className="absolute bottom-0 right-0 p-1.5 bg-emerald-500 rounded-tl-xl shadow-sm">
-            <ShieldCheck className="w-4.5 h-4.5 text-white" />
-          </div>
-        </div>
-
-        {/* Center Details & "View All Services" Button */}
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* The little tiny icon on profile where it says Carlos's name / verified host */}
-            <div className="flex items-center gap-2">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950 rounded-3xl p-4 md:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* Compact & Collapsible Driver Profile Header with Driver Switcher and Expand Toggle */}
+      <div className="pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          {/* Driver identity & thumbnail */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              onClick={() => {
+                playCabinChime('tap');
+                setIsLightboxOpen(true);
+              }}
+              className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border-2 border-slate-300 dark:border-slate-700 shadow-sm cursor-pointer group"
+              title="Tap to view photo gallery"
+            >
               <img
                 src={profile.avatarUrl}
-                alt={profile.name}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover ring-2 ring-sky-500/80 shadow-xs shrink-0"
+                alt={`${profile.name} - Driver`}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                referrerPolicy="no-referrer"
               />
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white truncate font-display tracking-tight">
-                {profile.name}
-              </h2>
+              <div className="absolute bottom-0 right-0 p-1 bg-emerald-500 rounded-tl-lg shadow-xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-white" />
+              </div>
             </div>
-            <span className="text-xs font-extrabold text-sky-600 dark:text-sky-400 px-3 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/80 border border-sky-200/80 dark:border-sky-800/80 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-sky-500" />
-              Verified Host
-            </span>
-            <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200/80 dark:border-emerald-800/80">
-              Top 1% Rated
-            </span>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white truncate font-display tracking-tight">
+                  {profile.name}
+                </h2>
+                <span className="text-[10px] sm:text-xs font-bold text-sky-600 dark:text-sky-400 px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/80 border border-sky-200/80 dark:border-sky-800/80 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-sky-500" />
+                  Verified Host
+                </span>
+                {drivers.length > 1 && onSelectDriver && (
+                  <select
+                    value={profile.id}
+                    onChange={(e) => onSelectDriver(e.target.value)}
+                    className="text-[11px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 cursor-pointer"
+                    title="Switch active driver"
+                  >
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        Driver: {d.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                <span className="font-bold text-slate-700 dark:text-slate-300 truncate">
+                  {profile.companyName}
+                </span>
+                <span>·</span>
+                <span className="flex items-center gap-1 text-amber-500 font-bold">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <span className="text-slate-900 dark:text-white">{profile.rating}</span>
+                  <span className="text-slate-400 font-normal">({profile.totalTrips.toLocaleString()}+)</span>
+                </span>
+              </div>
+            </div>
           </div>
 
-          <p className="text-base font-bold text-slate-700 dark:text-slate-200 font-display">
-            {profile.companyName}
-          </p>
-
-          {/* Clean unboxed metadata with separators */}
-          <div className="flex items-center gap-3.5 text-sm text-slate-600 dark:text-slate-400 pt-0.5 flex-wrap font-medium">
-            <span className="flex items-center gap-1.5 font-bold text-amber-500">
-              <Star className="w-4.5 h-4.5 fill-current" />
-              <span className="tabular-nums text-slate-900 dark:text-white font-extrabold text-sm">{profile.rating}</span>
-              <span className="text-xs font-normal text-slate-500">({profile.totalTrips.toLocaleString()}+ trips)</span>
-            </span>
-            <span>·</span>
-            <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-              <Languages className="w-4 h-4 text-sky-500" />
-              <span>English & Spanish</span>
-            </span>
-          </div>
-
-          {/* Direct Buttons to All Services & Website */}
-          <div className="flex items-center gap-2.5 pt-1.5 flex-wrap">
+          {/* Quick Actions & Collapse Toggle */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* View All Services Offered button moved toward available space on left */}
             <button
               onClick={() => {
                 playCabinChime('tap');
                 setActiveTab('services');
               }}
-              className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-extrabold text-xs sm:text-sm tracking-tight transition-all active:scale-97 cursor-pointer shadow-xs flex items-center justify-between gap-2 border border-slate-700/50 dark:border-sky-400/50 min-h-[42px]"
-              title="Browse all 5 Silvermyst services"
+              className="py-1.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-bold text-xs tracking-tight transition-all active:scale-97 cursor-pointer shadow-xs flex items-center gap-1.5 border border-slate-700/50 dark:border-sky-400/50"
+              title="Browse all Silvermyst services"
             >
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-4 h-4 shrink-0" />
-                <span>View All Services Offered (5)</span>
-              </div>
-              <ChevronRight className="w-4 h-4 shrink-0" />
+              <Briefcase className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Services (5)</span>
+              <span className="sm:hidden">Services</span>
             </button>
 
-            <a
-              href={profile.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => playCabinChime('tap')}
-              className="py-2 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm tracking-tight transition-all cursor-pointer flex items-center gap-2 border border-slate-200 dark:border-slate-700 min-h-[42px]"
-              title="Visit official website: silvermyst.com"
+            {/* QR Pop-up trigger */}
+            <button
+              onClick={() => {
+                playCabinChime('tap');
+                handleOpenSocial('website');
+              }}
+              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 cursor-pointer"
+              title="Scan QR Code"
             >
-              <Globe className="w-4 h-4 text-sky-500" />
-              <span>silvermyst.com</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-            </a>
+              <QrCode className="w-5 h-5" />
+            </button>
+
+            {/* Expand / Collapse profile toggle button */}
+            <button
+              onClick={() => {
+                playCabinChime('tap');
+                setIsProfileExpanded(!isProfileExpanded);
+              }}
+              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+              title={isProfileExpanded ? "Hide extended profile" : "Expand driver bio and vehicle details"}
+            >
+              {isProfileExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
           </div>
         </div>
 
-        {/* Scannable Website / Linktree QR Code */}
-        <div
-          onClick={() => {
-            playCabinChime('tap');
-            handleOpenSocial('website');
-          }}
-          className="shrink-0 flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer shadow-xs group"
-          title="Tap to open high-contrast scan pop-up with dimmed background"
-        >
-          <div className="relative">
-            <QRCodeView
-              value={profile.website}
-              size={82}
-              className="p-1 rounded-xl shadow-none border-0"
-            />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity flex flex-col items-center justify-center gap-0.5 text-white">
-              <Maximize2 className="w-5 h-5 text-emerald-400 drop-shadow" />
-              <span className="text-[10px] font-bold">Pop-Up</span>
+        {/* Collapsible Extended Profile Tray */}
+        {isProfileExpanded && (
+          <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/60 text-xs space-y-2 animate-fadeIn">
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+              {profile.bio}
+            </p>
+            <div className="flex items-center gap-4 text-slate-500 dark:text-slate-400 flex-wrap pt-1 font-medium">
+              <span className="flex items-center gap-1.5">
+                <Car className="w-4 h-4 text-sky-500" />
+                <span>{profile.vehicleYear} {profile.vehicleModel}</span>
+              </span>
+              <span>·</span>
+              <span className="flex items-center gap-1.5">
+                <Languages className="w-4 h-4 text-sky-500" />
+                <span>{profile.languages.join(' & ')}</span>
+              </span>
+              <span>·</span>
+              <span className="text-emerald-500 font-bold">{profile.cleanlinessScore}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 mt-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-            <span>🌐 silvermyst.com</span>
-          </div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-none mt-0.5 flex items-center gap-1 font-semibold">
-            <QrCode className="w-3 h-3 text-emerald-500" />
-            <span>Tap to Scan</span>
-          </span>
-        </div>
+        )}
       </div>
 
       {/* Segmented Tab Controls (Photo Gallery | About Me | Favorite Foods | My Services) */}
@@ -688,80 +697,83 @@ export const RightDriverHub: React.FC<RightDriverHubProps> = ({
         )}
       </div>
 
-      {/* BOTTOM APPS DOCK ON DRIVER'S SIDE (Linktree, Instagram, Save Contact vCard, WhatsApp) */}
-      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
+      {/* BOTTOM APPS DOCK ON DRIVER'S SIDE (Linktree, Venmo, Cash App, Instagram, WhatsApp, Phone) */}
+      <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-display">
-            Quick Connect & Social Apps (Tap to Scan QR)
-          </span>
-          <span className="text-xs text-sky-500 font-bold">1-Tap Camera Scan</span>
+          <div className="flex items-center gap-1.5">
+            <QrCode className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 font-display">
+              Quick Connect & Pay (Tap to Scan QR)
+            </span>
+          </div>
+          <span className="text-[11px] text-sky-500 font-extrabold">Instant Phone Camera Scan</span>
         </div>
 
-        <div className="grid grid-cols-5 gap-2.5">
-          {/* App 1: Website */}
-          <button
-            onClick={() => handleOpenSocial('website')}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer min-h-[66px] sm:min-h-[70px] group active:scale-95"
-          >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-108 transition-transform">
-              <Globe className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-            </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full text-center">
-              Website
-            </span>
-          </button>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {quickConnects
+            .filter((item) => item.isVisible)
+            .map((item) => {
+              const renderQuickIcon = () => {
+                if (item.type === 'venmo') {
+                  return <span className="font-black text-sm">V</span>;
+                }
+                if (item.type === 'cashapp') {
+                  return <span className="font-black text-sm">$</span>;
+                }
+                if (item.type === 'linktree') {
+                  return <span className="text-sm">🌲</span>;
+                }
+                if (item.type === 'instagram') {
+                  return <span className="text-sm">📸</span>;
+                }
+                if (item.type === 'whatsapp') {
+                  return <span className="text-sm">💬</span>;
+                }
+                if (item.type === 'phone') {
+                  return <Phone className="w-4 h-4" />;
+                }
+                if (item.type === 'website') {
+                  return <Globe className="w-4 h-4" />;
+                }
+                return <QrCode className="w-4 h-4" />;
+              };
 
-          {/* App 2: Linktree */}
-          <button
-            onClick={() => handleOpenSocial('linktree')}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer min-h-[66px] sm:min-h-[70px] group active:scale-95"
-          >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-108 transition-transform">
-              <span className="font-bold text-sm sm:text-base">🌲</span>
-            </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full text-center">
-              Linktree
-            </span>
-          </button>
-
-          {/* App 3: Instagram */}
-          <button
-            onClick={() => handleOpenSocial('instagram')}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer min-h-[66px] sm:min-h-[70px] group active:scale-95"
-          >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-108 transition-transform">
-              <span className="font-bold text-sm sm:text-base">📸</span>
-            </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full text-center">
-              Instagram
-            </span>
-          </button>
-
-          {/* App 4: Save Contact Card (vCard) */}
-          <button
-            onClick={() => handleOpenSocial('contact')}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer min-h-[66px] sm:min-h-[70px] group active:scale-95"
-          >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-108 transition-transform">
-              <Phone className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-            </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full text-center">
-              Save Contact
-            </span>
-          </button>
-
-          {/* App 5: WhatsApp Direct Line */}
-          <button
-            onClick={() => handleOpenSocial('whatsapp')}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer min-h-[66px] sm:min-h-[70px] group active:scale-95"
-          >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-108 transition-transform">
-              <span className="font-bold text-sm sm:text-base">💬</span>
-            </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full text-center">
-              WhatsApp
-            </span>
-          </button>
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    playCabinChime('tap');
+                    setSocialModalData({
+                      title: item.title,
+                      subtitle: item.subtitle,
+                      handleOrValue: item.handleOrValue,
+                      url: item.url,
+                      qrValue: item.qrValue,
+                      type: item.type,
+                      description: item.description,
+                      badge: item.badge,
+                      accentColor: item.accentColor,
+                    });
+                  }}
+                  className="flex-1 min-w-[76px] sm:min-w-[84px] flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900/90 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 hover:border-purple-500/50 dark:hover:border-purple-500/50 transition-all cursor-pointer min-h-[64px] sm:min-h-[68px] group active:scale-95 shadow-xs"
+                >
+                  <div
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center mb-1 text-white shadow-xs group-hover:scale-110 transition-transform"
+                    style={{ backgroundColor: item.accentColor || '#6366f1' }}
+                  >
+                    {renderQuickIcon()}
+                  </div>
+                  <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 truncate w-full text-center">
+                    {item.title}
+                  </span>
+                  {item.badge && (
+                    <span className="text-[8.5px] font-bold text-slate-500 dark:text-slate-400 truncate">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
         </div>
       </div>
 

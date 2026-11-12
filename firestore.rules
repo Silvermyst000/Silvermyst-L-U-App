@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // System and public configuration documents
+    match /system/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Driver accounts & profiles (publicly read active driver profile; drivers/admins can update)
+    match /drivers/{driverId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Tablet registrations & device status
+    match /tablets/{tabletId} {
+      allow read: if true;
+      allow write: if true; // Allows tablets to heartbeat and sync status
+    }
+
+    // Passenger Requests (passengers can create from kiosk without auth; admins/drivers read and update)
+    match /requests/{requestId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+
+    // Service inquiries submitted by passengers
+    match /inquiries/{inquiryId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isSignedIn();
+    }
+
+    // Administrator internal communications & messages
+    match /messages/{messageId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Announcements
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Activity logs & audit trail
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+  }
+}

@@ -179,6 +179,7 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
             }}
             onOpenWifi={() => setIsWifiOpen(true)}
             onOpenComfort={() => setActiveApp('comfort')}
+            onOpenWeather={() => setIsWeatherOpen(true)}
           />
         )}
 
@@ -297,6 +298,7 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
       <WeatherAppModal
         isOpen={isWeatherOpen}
         onClose={() => setIsWeatherOpen(false)}
+        onSendMessage={onSendMessage}
       />
 
       {/* Flight Tracker Modal */}
