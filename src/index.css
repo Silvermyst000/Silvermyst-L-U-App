@@ -6,11 +6,62 @@
   :root {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     color-scheme: dark light;
+    --cabin-bg: #0c091c;
+    --cabin-bg-secondary: #151030;
+    --cabin-surface: #161232;
+    --cabin-surface-muted: #1f1945;
+    --cabin-border: rgba(139, 92, 246, 0.28);
+    --cabin-text: #f5f3ff;
+    --cabin-text-muted: #c4b5fd;
+    --cabin-primary: #7c3aed;
+    --cabin-primary-text: #ffffff;
+    --cabin-accent: #38bdf8;
+    --cabin-badge-bg: rgba(124, 58, 237, 0.22);
+    --cabin-badge-text: #ddd6fe;
   }
-  
+
   h1, h2, h3, h4, .font-display {
     font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   }
+}
+
+/* System-wide Cabin Theme integration helpers */
+.cabin-shell {
+  background-color: var(--cabin-bg);
+  color: var(--cabin-text);
+}
+
+.cabin-header {
+  background-color: color-mix(in srgb, var(--cabin-surface) 92%, transparent);
+  border-color: var(--cabin-border);
+  color: var(--cabin-text);
+}
+
+.cabin-card {
+  background-color: var(--cabin-surface);
+  border-color: var(--cabin-border);
+  color: var(--cabin-text);
+}
+
+.cabin-panel {
+  background-color: var(--cabin-surface-muted);
+  border-color: var(--cabin-border);
+  color: var(--cabin-text);
+}
+
+.cabin-text-muted {
+  color: var(--cabin-text-muted);
+}
+
+.cabin-primary-btn {
+  background-color: var(--cabin-primary);
+  color: var(--cabin-primary-text);
+}
+
+.cabin-badge {
+  background-color: var(--cabin-badge-bg);
+  color: var(--cabin-badge-text);
+  border-color: var(--cabin-border);
 }
 
 /* Kiosk Custom Scrollbar styling */
@@ -27,6 +78,14 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.45);
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Touch active transitions */
@@ -58,4 +117,40 @@ button:active, a:active {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out forwards;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only-report {
+    display: block !important;
+    position: static !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
+/* Accessibility Easy View ("Big & Clean") Mode */
+.easy-view-mode {
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.easy-view-mode .cabin-card,
+.easy-view-mode .cabin-panel {
+  border-width: 1.5px;
+}
+
+.easy-view-mode button,
+.easy-view-mode input,
+.easy-view-mode select {
+  min-height: 44px;
+}
+
 

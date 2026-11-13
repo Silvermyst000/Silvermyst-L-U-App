@@ -20,10 +20,13 @@ import {
   Camera,
   Layers,
   CloudSun,
+  Compass,
+  Heart,
 } from 'lucide-react';
-import { InstalledAppItem, SongRequest } from '../types/kiosk';
+import { InstalledAppItem, SongRequest, SupportedLanguage } from '../types/kiosk';
 import { launchTabletApp } from '../utils/appLauncher';
 import { playCabinChime } from '../utils/cabinAudio';
+import { KIOSK_TRANSLATIONS } from '../data/cabinThemes';
 
 interface TabletAppLauncherHubProps {
   apps: InstalledAppItem[];
@@ -32,7 +35,14 @@ interface TabletAppLauncherHubProps {
   onOpenWifi?: () => void;
   onOpenComfort: () => void;
   onOpenWeather?: () => void;
+  onOpenRidePreferences?: () => void;
+  onOpenMusicCenter?: () => void;
+  onOpenExploreNearby?: () => void;
+  onOpenMiniGames?: () => void;
+  onOpenFeedback?: () => void;
   activeDriverName?: string;
+  language?: SupportedLanguage;
+  easyView?: boolean;
 }
 
 export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
@@ -41,8 +51,16 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
   onOpenGallery,
   onOpenComfort,
   onOpenWeather,
+  onOpenRidePreferences,
+  onOpenMusicCenter,
+  onOpenExploreNearby,
+  onOpenMiniGames,
+  onOpenFeedback,
   activeDriverName = 'Carlos',
+  language = 'en',
+  easyView = false,
 }) => {
+  const t = KIOSK_TRANSLATIONS[language] || KIOSK_TRANSLATIONS.en;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [launchToast, setLaunchToast] = useState<{ title: string; message: string } | null>(null);
@@ -89,6 +107,11 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
       onOpenGallery,
       onOpenComfort,
       onOpenWeather,
+      onOpenRidePreferences,
+      onOpenMusicCenter,
+      onOpenExploreNearby,
+      onOpenMiniGames,
+      onOpenFeedback,
       onSongRequest: () => setIsSongRequestOpen(true),
       onNotifyLaunch: (appName, msg) => {
         setLaunchToast({ title: appName, message: msg });
@@ -200,6 +223,41 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
         </div>
       );
     }
+    if (app.packageName === 'internal.preferences' || app.id === 'app-preferences') {
+      return (
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-purple-800 flex items-center justify-center shadow-md shadow-purple-600/25 shrink-0 text-white">
+          <Sparkles className="w-6 h-6 text-purple-200" />
+        </div>
+      );
+    }
+    if (app.packageName === 'internal.music' || app.id === 'app-music-center') {
+      return (
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-emerald-600 flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0 text-white">
+          <Music className="w-6 h-6 text-slate-950 fill-slate-950" />
+        </div>
+      );
+    }
+    if (app.packageName === 'internal.explore' || app.id === 'app-explore') {
+      return (
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center shadow-md shadow-sky-500/25 shrink-0 text-white">
+          <Compass className="w-6 h-6 text-white" />
+        </div>
+      );
+    }
+    if (app.packageName === 'internal.games' || app.id === 'app-arcade') {
+      return (
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/25 shrink-0 text-white">
+          <Gamepad2 className="w-6 h-6 text-white" />
+        </div>
+      );
+    }
+    if (app.packageName === 'internal.feedback' || app.id === 'app-feedback') {
+      return (
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-600 flex items-center justify-center shadow-md shadow-amber-500/25 shrink-0 text-slate-950 font-black">
+          <Heart className="w-6 h-6 fill-slate-950 text-slate-950" />
+        </div>
+      );
+    }
     if (app.packageName === 'internal.weather' || app.id === 'app-weather') {
       return (
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-400 via-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/25 shrink-0 text-white">
@@ -217,65 +275,65 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs transition-colors overflow-hidden">
+    <div className="flex flex-col h-full cabin-card p-3 sm:p-4 rounded-2xl border shadow-xs transition-colors overflow-hidden">
       {/* Top Banner: Spotify & Games Quick Launch Hero Header */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 shrink-0 mb-3">
         {/* Spotify Tablet App Card */}
-        <div className="relative rounded-2xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-slate-950 p-3.5 border border-[#1db954]/40 flex items-center justify-between gap-3 shadow-xs overflow-hidden group">
-          <div className="flex items-center gap-3 min-w-0 z-10">
-            <div className="w-11 h-11 rounded-2xl bg-[#1db954] flex items-center justify-center shadow-md shadow-[#1db954]/30 shrink-0">
-              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-slate-950">
+        <div className="relative rounded-2xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-slate-950 p-3 border border-[#1db954]/40 flex items-center justify-between gap-2 shadow-xs overflow-hidden group min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden z-10">
+            <div className="w-10 h-10 rounded-2xl bg-[#1db954] flex items-center justify-center shadow-md shadow-[#1db954]/30 shrink-0">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-slate-950">
                 <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.31c-.218.357-.68.472-1.037.254-2.842-1.737-6.42-2.13-10.635-1.168-.408.094-.813-.16-.906-.568-.094-.407.16-.812.568-.906 4.622-1.056 8.587-.613 11.756 1.35.357.218.473.68.254 1.038zm1.47-3.26c-.274.446-.86.588-1.305.314-3.253-2-8.214-2.58-12.062-1.41-.5.152-1.032-.132-1.184-.633-.153-.5.132-1.032.633-1.184 4.41-1.338 9.882-.693 13.604 1.608.446.274.588.86.314 1.305zm.126-3.41c-3.902-2.317-10.334-2.53-14.062-1.397-.598.182-1.233-.157-1.415-.755-.182-.598.157-1.233.755-1.415 4.29-1.302 11.392-1.045 15.875 1.616.538.318.714 1.018.396 1.556-.318.538-1.018.714-1.556.396z" />
               </svg>
             </div>
-            <div className="min-w-0">
-              <span className="text-[9px] font-black uppercase tracking-wider text-[#1db954] bg-[#1db954]/10 px-2 py-0.5 rounded-full border border-[#1db954]/30">
-                Installed App
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <span className="inline-block max-w-full truncate text-[9px] font-black uppercase tracking-wider text-[#1db954] bg-[#1db954]/10 px-2 py-0.5 rounded-full border border-[#1db954]/30">
+                {t.installedApp}
               </span>
-              <h3 className="text-sm font-bold text-white font-display mt-0.5 truncate">
-                Spotify App
+              <h3 className="text-xs sm:text-sm font-bold text-white font-display mt-0.5 truncate">
+                {t.spotifyTitle}
               </h3>
-              <p className="text-[11px] text-slate-300 truncate">
-                Stream on vehicle audio
+              <p className="text-[10.5px] text-slate-300 truncate">
+                {t.spotifySub}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 shrink-0 z-10">
+          <div className="flex flex-col gap-1 shrink-0 z-10 items-end">
             <button
               onClick={() => {
                 const spotifyApp = apps.find((a) => a.id === 'app-spotify');
                 if (spotifyApp) handleLaunch(spotifyApp);
               }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#1db954] hover:bg-[#1ed760] text-slate-950 font-black text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#1db954] hover:bg-[#1ed760] text-slate-950 font-black text-xs transition-all active:scale-95 cursor-pointer shadow-xs whitespace-nowrap"
             >
-              <span>Open</span>
+              <span>{t.open}</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setIsSongRequestOpen(true)}
-              className="text-[10px] text-slate-400 hover:text-white underline text-center"
+              className="text-[10px] text-slate-400 hover:text-white underline text-right whitespace-nowrap cursor-pointer"
             >
-              Ask Driver for Song
+              {t.askDriver}
             </button>
           </div>
         </div>
 
         {/* Download Tablet Games Card */}
-        <div className="relative rounded-2xl bg-gradient-to-r from-indigo-950/90 via-slate-900 to-slate-950 p-3.5 border border-indigo-500/40 flex items-center justify-between gap-3 shadow-xs overflow-hidden group">
-          <div className="flex items-center gap-3 min-w-0 z-10">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0 text-white">
-              <Gamepad2 className="w-6 h-6" />
+        <div className="relative rounded-2xl bg-gradient-to-r from-indigo-950/90 via-slate-900 to-slate-950 p-3 border border-indigo-500/40 flex items-center justify-between gap-2 shadow-xs overflow-hidden group min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden z-10">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0 text-white">
+              <Gamepad2 className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
-              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                Tablet Game Area
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <span className="inline-block max-w-full truncate text-[9px] font-black uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                {t.gameAreaBadge}
               </span>
-              <h3 className="text-sm font-bold text-white font-display mt-0.5 truncate">
-                Download Any Games
+              <h3 className="text-xs sm:text-sm font-bold text-white font-display mt-0.5 truncate">
+                {t.downloadGamesTitle}
               </h3>
-              <p className="text-[11px] text-slate-300 truncate">
-                Google Play Store Catalog
+              <p className="text-[10.5px] text-slate-300 truncate">
+                {t.playCatalog}
               </p>
             </div>
           </div>
@@ -285,10 +343,10 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
               const playApp = apps.find((a) => a.id === 'app-play-games');
               if (playApp) handleLaunch(playApp);
             }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-black text-xs transition-all active:scale-95 cursor-pointer shadow-xs shrink-0 z-10"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-black text-xs transition-all active:scale-95 cursor-pointer shadow-xs shrink-0 z-10 whitespace-nowrap"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Play Store</span>
+            <span>{t.playStore}</span>
           </button>
         </div>
       </div>
@@ -308,7 +366,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            All Apps ({categoryCounts.all})
+            {t.allApps} ({categoryCounts.all})
           </button>
 
           <button
@@ -324,7 +382,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
             }`}
           >
             <Gamepad2 className="w-3.5 h-3.5" />
-            <span>Games ({categoryCounts.games})</span>
+            <span>{t.games} ({categoryCounts.games})</span>
           </button>
 
           <button
@@ -340,7 +398,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
             }`}
           >
             <Music className="w-3.5 h-3.5" />
-            <span>Music ({categoryCounts.music})</span>
+            <span>{t.music} ({categoryCounts.music})</span>
           </button>
 
           <button
@@ -356,7 +414,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>Google Apps ({categoryCounts.google})</span>
+            <span>{t.googleApps} ({categoryCounts.google})</span>
           </button>
         </div>
 
@@ -368,10 +426,10 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
               setIsMoreAppsModalOpen(true);
             }}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer"
-            title="Open clean grid of all approved applications"
+            title={t.moreApps}
           >
             <Grid className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">More Apps</span>
+            <span className="hidden sm:inline">{t.moreApps}</span>
           </button>
 
           <div className="relative w-36 sm:w-44">
@@ -383,55 +441,59 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
                 setSearchQuery(e.target.value);
                 setCarouselPage(0);
               }}
-              placeholder="Search apps..."
+              placeholder={t.searchApps}
               className="w-full pl-8 pr-2 py-1 text-xs rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
             />
           </div>
         </div>
       </div>
 
-      {/* Swipeable Carousel View (6 apps per page with page indicators) */}
-      <div className="flex-1 overflow-y-auto min-h-0 pt-2.5 pr-1 flex flex-col justify-between">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      {/* Swipeable Carousel View (clean oversized layout in Easy View) */}
+      <div className="flex-1 overflow-y-auto min-h-0 pt-2 pr-0.5 flex flex-col justify-between">
+        <div className={`grid gap-2.5 w-full ${easyView ? 'grid-cols-1 gap-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
           {currentPageApps.map((app) => (
             <div
               key={app.id}
               onClick={() => handleLaunch(app)}
-              className="group relative p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-sky-500/50 dark:hover:border-sky-500/50 shadow-xs transition-all cursor-pointer flex flex-col justify-between gap-2 text-left active:scale-[0.98]"
+              className={`group relative rounded-2xl cabin-panel border hover:brightness-105 shadow-xs transition-all cursor-pointer flex flex-col justify-between gap-2 text-left active:scale-[0.98] overflow-hidden w-full min-w-0 ${
+                easyView ? 'p-4' : 'p-3'
+              }`}
             >
-              <div className="flex items-start justify-between gap-2.5">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-start justify-between gap-2 min-w-0 w-full">
+                <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                   {renderAppIcon(app)}
-                  <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-display truncate group-hover:text-sky-500 transition-colors">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <h4 className={`${easyView ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'} font-bold font-display truncate transition-colors`}>
                       {app.name}
                     </h4>
-                    {app.badge && (
-                      <span className="inline-block mt-0.5 text-[8.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-200/70 dark:bg-slate-800/80 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+                    {!easyView && app.badge && (
+                      <span className="inline-block mt-0.5 text-[8.5px] font-bold uppercase tracking-wider cabin-badge border px-2 py-0.5 rounded-md truncate max-w-full">
                         {app.badge}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="w-7 h-7 rounded-lg bg-slate-200/60 dark:bg-slate-800/60 group-hover:bg-sky-500 group-hover:text-white text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors shrink-0">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
+                <div className={`${easyView ? 'w-9 h-9' : 'w-7 h-7'} rounded-lg cabin-card border flex items-center justify-center transition-colors shrink-0`}>
+                  <ArrowUpRight className={`${easyView ? 'w-4.5 h-4.5' : 'w-3.5 h-3.5'}`} />
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug line-clamp-2">
+              <p className={`${easyView ? 'text-sm' : 'text-[11px]'} cabin-text-muted leading-snug line-clamp-2 break-words overflow-hidden min-h-[30px]`}>
                 {app.description}
               </p>
 
-              <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 text-[9.5px] text-slate-400">
-                <span className="font-mono truncate max-w-[120px]">
-                  {app.packageName.startsWith('internal.') ? 'In-Cabin Action' : app.packageName}
-                </span>
-                <span className="font-bold text-sky-500 group-hover:underline flex items-center gap-0.5">
-                  <span>Open</span>
-                  <ChevronRight className="w-3 h-3" />
-                </span>
-              </div>
+              {!easyView && (
+                <div className="flex items-center justify-between pt-1.5 border-t text-[9.5px] cabin-text-muted min-w-0 w-full gap-2 overflow-hidden" style={{ borderColor: 'var(--cabin-border)' }}>
+                  <span className="font-mono truncate flex-1 min-w-0">
+                    {app.packageName.startsWith('internal.') ? 'In-Cabin Action' : app.packageName}
+                  </span>
+                  <span className="font-bold flex items-center gap-0.5 shrink-0" style={{ color: 'var(--cabin-accent)' }}>
+                    <span>{t.open}</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -448,7 +510,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
               className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 disabled:opacity-40 text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Prev</span>
+              <span>{t.prev}</span>
             </button>
 
             {/* Page Dots */}
@@ -478,7 +540,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
               }}
               className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 disabled:opacity-40 text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
-              <span>Next</span>
+              <span>{t.next}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -513,7 +575,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
               <div className="flex items-center gap-2">
                 <Grid className="w-5 h-5 text-sky-500" />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white font-display">
-                  Approved In-Cabin Applications ({visibleApps.length})
+                  {t.allApps} ({visibleApps.length})
                 </h3>
               </div>
               <button
@@ -561,10 +623,10 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">
-                    Ask {activeDriverName} for a Track
+                    {t.askDriver}: {activeDriverName}
                   </h3>
                   <p className="text-[10px] text-slate-400">
-                    Will be sent to driver's dashboard
+                    {t.driverNotified}
                   </p>
                 </div>
               </div>
@@ -572,14 +634,14 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
                 onClick={() => setIsSongRequestOpen(false)}
                 className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded"
               >
-                Cancel
+                ✕
               </button>
             </div>
 
             <form onSubmit={handleQuickSongSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1">
-                  Song Title or Track Name *
+                  🎵 *
                 </label>
                 <input
                   type="text"
@@ -593,7 +655,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1">
-                  Artist or Band (Optional)
+                  Artist / Band
                 </label>
                 <input
                   type="text"
@@ -608,7 +670,7 @@ export const TabletAppLauncherHub: React.FC<TabletAppLauncherHubProps> = ({
                 type="submit"
                 className="w-full py-3 rounded-xl bg-[#1db954] hover:bg-[#1ed760] text-slate-950 font-bold text-xs tracking-tight transition-all active:scale-95 shadow-md shadow-[#1db954]/20 cursor-pointer"
               >
-                Send Request to {activeDriverName}
+                {t.send} → {activeDriverName}
               </button>
             </form>
           </div>

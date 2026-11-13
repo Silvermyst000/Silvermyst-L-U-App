@@ -1,126 +1,207 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MapPin,
   Navigation,
   Compass,
   Search,
   ExternalLink,
-  Layers,
-  Clock,
   Car,
   Plane,
   Building,
   Utensils,
+  Loader2,
+  Star,
 } from 'lucide-react';
+import {
+  APIProvider,
+  Map as GoogleMap,
+  AdvancedMarker,
+  Pin,
+  InfoWindow,
+} from '@vis.gl/react-google-maps';
 import { playCabinChime } from '../../utils/cabinAudio';
+import { openExternalUrl } from '../../utils/appLauncher';
+import {
+  getMapsConfig,
+  geocodeLocationQuery,
+  searchGooglePlaces,
+} from '../../utils/mapsConfig';
 
 interface MapDestination {
   id: string;
   name: string;
   category: 'Airport' | 'Downtown' | 'Dining' | 'Attraction';
-  eta: string;
-  distance: string;
+  eta?: string;
+  distance?: string;
   address: string;
   lat: number;
   lng: number;
+  rating?: number;
+  googleMapsUri?: string;
 }
 
-const CITY_DESTINATIONS: MapDestination[] = [
+const DEFAULT_DESTINATIONS: MapDestination[] = [
   {
     id: 'm1',
-    name: 'Metro International Airport (Terminal 1 & 2)',
+    name: 'South Bend International Airport (SBN)',
     category: 'Airport',
-    eta: '18 min',
-    distance: '14.2 mi',
-    address: 'International Airport Pkwy',
-    lat: 34.05,
-    lng: -118.25,
+    eta: '12 min',
+    distance: '4.6 mi',
+    address: '4477 Progress Dr, South Bend, IN 46628',
+    lat: 41.7089,
+    lng: -86.3172,
   },
   {
     id: 'm2',
-    name: 'Downtown Financial & Arts Plaza',
+    name: 'Downtown South Bend & Morris Center',
     category: 'Downtown',
-    eta: '9 min',
-    distance: '4.8 mi',
-    address: 'Grand Ave & 5th St',
-    lat: 34.052,
-    lng: -118.245,
+    eta: '6 min',
+    distance: '1.5 mi',
+    address: '211 N Michigan St, South Bend, IN 46601',
+    lat: 41.6783,
+    lng: -86.2504,
   },
   {
     id: 'm3',
-    name: 'Taqueria El Sol (Carlos’s Top Pick)',
-    category: 'Dining',
-    eta: '6 min',
-    distance: '2.1 mi',
-    address: '4th & Main Street',
-    lat: 34.048,
-    lng: -118.248,
+    name: 'Notre Dame Stadium & Golden Dome',
+    category: 'Attraction',
+    eta: '9 min',
+    distance: '2.8 mi',
+    address: '2010 Moose Krause Cir, Notre Dame, IN 46556',
+    lat: 41.6984,
+    lng: -86.2339,
   },
   {
     id: 'm4',
-    name: 'City Convention & Exhibition Center',
-    category: 'Attraction',
-    eta: '12 min',
-    distance: '6.4 mi',
-    address: '1201 S Figueroa St',
-    lat: 34.04,
-    lng: -118.269,
+    name: 'Tippecanoe Place Restaurant',
+    category: 'Dining',
+    eta: '7 min',
+    distance: '1.8 mi',
+    address: '620 W Washington St, South Bend, IN 46601',
+    lat: 41.6761,
+    lng: -86.2588,
   },
 ];
 
-export const GoogleMapsApp: React.FC = () => {
-  const [selectedDest, setSelectedDest] = useState<MapDestination>(CITY_DESTINATIONS[0]);
+interface GoogleMapsAppProps {
+  easyView?: boolean;
+}
+
+export const GoogleMapsApp: React.FC<GoogleMapsAppProps> = ({ easyView = false }) => {
+  const [destinations, setDestinations] = useState<MapDestination[]>(DEFAULT_DESTINATIONS);
+  const [selectedDest, setSelectedDest] = useState<MapDestination>(DEFAULT_DESTINATIONS[0]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapStyle, setMapStyle] = useState<'traffic' | 'satellite' | 'standard'>('traffic');
+  const [mapsApiKey, setMapsApiKey] = useState<string>('');
+  const [searching, setSearching] = useState(false);
+  const [infoOpenId, setInfoOpenId] = useState<string | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
+    lat: DEFAULT_DESTINATIONS[0].lat,
+    lng: DEFAULT_DESTINATIONS[0].lng,
+  });
 
-  const handleLaunchGoogleMaps = (query?: string) => {
+  useEffect(() => {
+    let mounted = true;
+    getMapsConfig().then((cfg) => {
+      if (mounted && cfg.configured && cfg.apiKey) {
+        setMapsApiKey(cfg.apiKey);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLaunchGoogleMaps = (dest?: MapDestination, rawQuery?: string) => {
     playCabinChime('tap');
-    const destinationName = query || selectedDest.name;
-    const encoded = encodeURIComponent(destinationName);
+    if (dest?.googleMapsUri) {
+      openExternalUrl(dest.googleMapsUri);
+      return;
+    }
+    const target = rawQuery || (dest ? `${dest.name} ${dest.address}` : selectedDest.name);
+    const encoded = encodeURIComponent(target);
 
-    // Check if on Android to open Android Maps Intent, fallback to Google Maps Web
     const isAndroid = /android/i.test(navigator.userAgent);
     if (isAndroid) {
       window.location.href = `google.navigation:q=${encoded}`;
     } else {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+      openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encoded}`);
     }
   };
 
-  const filteredDests = searchQuery.trim()
-    ? CITY_DESTINATIONS.filter(
-        (d) =>
-          d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          d.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          d.category.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : CITY_DESTINATIONS;
+  const handleSearchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) {
+      setDestinations(DEFAULT_DESTINATIONS);
+      return;
+    }
+    playCabinChime('tap');
+    setSearching(true);
+
+    // First try geocoding if it looks like a ZIP code or city, then run Places API (New) text search
+    let centerBias = mapCenter;
+    if (/^\d{5}$/.test(q) || q.includes(',')) {
+      const geo = await geocodeLocationQuery(q);
+      if (geo) {
+        centerBias = { lat: geo.lat, lng: geo.lng };
+        setMapCenter(centerBias);
+      }
+    }
+
+    const placesRes = await searchGooglePlaces({
+      query: q,
+      lat: centerBias.lat,
+      lng: centerBias.lng,
+    });
+
+    if (placesRes.places.length > 0) {
+      const mapped: MapDestination[] = placesRes.places.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: 'Attraction',
+        address: p.address,
+        lat: p.lat,
+        lng: p.lng,
+        rating: p.rating,
+        googleMapsUri: p.googleMapsUri,
+      }));
+      setDestinations(mapped);
+      setSelectedDest(mapped[0]);
+      setMapCenter({ lat: mapped[0].lat, lng: mapped[0].lng });
+      setInfoOpenId(mapped[0].id);
+    }
+    setSearching(false);
+  };
 
   return (
-    <div className="flex flex-col h-full space-y-3.5 bg-slate-950 text-white rounded-2xl p-4 border border-slate-800 overflow-hidden">
+    <div className={`flex flex-col h-full bg-slate-950 text-white rounded-2xl border border-slate-800 overflow-hidden ${easyView ? 'p-4 space-y-4' : 'p-4 space-y-3'}`}>
       {/* Google Maps Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md p-1.5">
-            {/* Google Maps Pin Icon */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0 gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`${easyView ? 'w-10 h-10 p-2' : 'w-8 h-8 p-1.5'} rounded-full bg-white flex items-center justify-center shadow-md shrink-0`}>
             <svg viewBox="0 0 24 24" className="w-full h-full">
               <path fill="#4285F4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
               <circle cx="12" cy="9" r="2.5" fill="#EA4335" />
             </svg>
           </div>
-          <div>
-            <h3 className="text-sm font-bold tracking-tight text-white font-display">
+          <div className="min-w-0">
+            <h3 className={`${easyView ? 'text-base sm:text-lg' : 'text-sm'} font-bold tracking-tight text-white font-display truncate`}>
               Google Maps Live Route
             </h3>
-            <p className="text-[10px] text-slate-400">
-              In-Cabin GPS Navigation & ETA Explorer
-            </p>
+            {!easyView && (
+              <p className="text-[10px] text-slate-400 truncate">
+                In-Cabin GPS Navigation &amp; Place Explorer
+              </p>
+            )}
           </div>
         </div>
 
         <button
-          onClick={() => handleLaunchGoogleMaps()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs tracking-tight transition-all active:scale-95 cursor-pointer shadow-sm"
+          type="button"
+          onClick={() => handleLaunchGoogleMaps(selectedDest)}
+          className={`flex items-center gap-1.5 rounded-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold tracking-tight transition-all active:scale-95 cursor-pointer shadow-sm shrink-0 ${
+            easyView ? 'px-4 py-2 text-sm' : 'px-3 py-1.5 text-xs'
+          }`}
           title="Open Google Maps App on tablet"
         >
           <span>Open Google Maps</span>
@@ -128,99 +209,124 @@ export const GoogleMapsApp: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="relative shrink-0">
-        <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search any destination, airport terminal, or address..."
-          className="w-full pl-9 pr-24 py-2 text-xs rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => handleLaunchGoogleMaps(searchQuery)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-sky-500 text-slate-950 text-[10px] font-bold cursor-pointer"
-          >
-            Go
-          </button>
-        )}
-      </div>
-
-      {/* Interactive Map Visual Simulation Canvas */}
-      <div className="relative h-44 rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0">
-        {/* Vector Stylized Map Grid */}
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="mapGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" strokeWidth="0.8" />
-            </pattern>
-            <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#38bdf8" />
-              <stop offset="100%" stopColor="#22c55e" />
-            </linearGradient>
-          </defs>
-
-          <rect width="100%" height="100%" fill="#090d16" />
-          <rect width="100%" height="100%" fill="url(#mapGrid)" />
-
-          {/* Simulated Highways & Boulevards */}
-          <path d="M-20 60 Q 140 100 280 40 T 600 90" fill="none" stroke="#1e293b" strokeWidth="12" />
-          <path d="M-20 60 Q 140 100 280 40 T 600 90" fill="none" stroke="#334155" strokeWidth="6" />
-
-          <path d="M80 180 Q 200 90 320 150 T 540 60" fill="none" stroke="#1e293b" strokeWidth="10" />
-          <path d="M80 180 Q 200 90 320 150 T 540 60" fill="none" stroke="#334155" strokeWidth="5" />
-
-          {/* Active Navigation Route Line (Animated Green / Cyan) */}
-          <path
-            d="M 60 130 C 120 110, 180 80, 240 90 S 340 120, 420 50"
-            fill="none"
-            stroke="url(#routeGrad)"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray="6,4"
-            className="animate-pulse"
+      {/* Search Input Bar (Geocoding + Places API New via proxy) */}
+      <form onSubmit={handleSearchSubmit} className="relative shrink-0 flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search destination, ZIP code, airport, or restaurant..."
+            className={`w-full pl-9 pr-3 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 ${
+              easyView ? 'py-2.5 text-sm' : 'py-2 text-xs'
+            }`}
           />
-
-          {/* Vehicle Indicator (Carlos's Sedan) */}
-          <g transform="translate(60, 130)">
-            <circle cx="0" cy="0" r="12" fill="#38bdf8" fillOpacity="0.25" className="animate-ping" />
-            <circle cx="0" cy="0" r="7" fill="#38bdf8" />
-            <circle cx="0" cy="0" r="3" fill="#ffffff" />
-          </g>
-
-          {/* Destination Pin */}
-          <g transform="translate(420, 50)">
-            <path
-              d="M0 -18 C -7 -18 -11 -13 -11 -7 C -11 1 0 10 0 10 C 0 10 11 1 11 -7 C 11 -13 7 -18 0 -18 Z"
-              fill="#ef4444"
-            />
-            <circle cx="0" cy="-8" r="4" fill="#ffffff" />
-          </g>
-        </svg>
-
-        {/* Live GPS HUD Overlay */}
-        <div className="absolute top-2.5 left-2.5 px-3 py-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-800 text-xs flex items-center gap-2">
-          <Car className="w-4 h-4 text-sky-400" />
-          <div>
-            <span className="text-[10px] text-slate-400 block leading-tight">Current In-Transit Vehicle</span>
-            <span className="font-bold text-white text-xs">Silvermyst Sedan • GPS Locked</span>
-          </div>
         </div>
+        <button
+          type="submit"
+          disabled={searching}
+          className={`rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-60 text-slate-950 font-extrabold cursor-pointer shrink-0 flex items-center gap-1.5 ${
+            easyView ? 'px-4 py-2.5 text-sm' : 'px-3.5 py-2 text-xs'
+          }`}
+        >
+          {searching && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          <span>Find</span>
+        </button>
+      </form>
 
-        {/* Selected Destination ETA Chip */}
-        <div className="absolute bottom-2.5 right-2.5 px-3 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-slate-800 text-xs flex items-center gap-3">
-          <div>
-            <span className="text-[10px] text-slate-400 block leading-tight">To {selectedDest.name.split('(')[0]}</span>
+      {/* Interactive Google Map Canvas with explicit height */}
+      <div className={`relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0 ${easyView ? 'h-56 sm:h-64' : 'h-48 sm:h-56'}`}>
+        {mapsApiKey ? (
+          <APIProvider apiKey={mapsApiKey}>
+            <GoogleMap
+              key={`${mapCenter.lat.toFixed(4)}-${mapCenter.lng.toFixed(4)}`}
+              defaultCenter={mapCenter}
+              center={mapCenter}
+              defaultZoom={12}
+              mapId="DEMO_MAP_ID"
+              gestureHandling="greedy"
+              internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+              className="w-full h-full"
+            >
+              {destinations.map((dest) => {
+                const isSelected = selectedDest.id === dest.id;
+                return (
+                  <React.Fragment key={dest.id}>
+                    <AdvancedMarker
+                      position={{ lat: dest.lat, lng: dest.lng }}
+                      onClick={() => {
+                        setSelectedDest(dest);
+                        setMapCenter({ lat: dest.lat, lng: dest.lng });
+                        setInfoOpenId(dest.id);
+                      }}
+                    >
+                      <Pin
+                        background={isSelected ? '#0ea5e9' : '#f59e0b'}
+                        glyphColor="#ffffff"
+                        borderColor={isSelected ? '#0369a1' : '#92400e'}
+                      />
+                    </AdvancedMarker>
+                    {infoOpenId === dest.id && (
+                      <InfoWindow
+                        position={{ lat: dest.lat, lng: dest.lng }}
+                        onCloseClick={() => setInfoOpenId(null)}
+                      >
+                        <div className="text-slate-900 p-1 max-w-[200px] space-y-1">
+                          <div className="font-bold text-xs">{dest.name}</div>
+                          <div className="text-[11px] text-slate-600">{dest.address}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchGoogleMaps(dest)}
+                            className="mt-1 px-2.5 py-1 rounded bg-sky-600 text-white text-[11px] font-bold cursor-pointer"
+                          >
+                            Start Route
+                          </button>
+                        </div>
+                      </InfoWindow>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </GoogleMap>
+          </APIProvider>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center space-y-2 bg-slate-900">
+            <Car className="w-8 h-8 text-sky-400" />
+            <div className="text-sm font-bold text-white">{selectedDest.name}</div>
+            <div className="text-xs text-slate-400">{selectedDest.address}</div>
+          </div>
+        )}
+
+        {/* Selected Destination HUD Bar */}
+        <div className="absolute bottom-2.5 right-2.5 px-3 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-slate-800 text-xs flex items-center gap-3 z-10 max-w-[90%]">
+          <div className="min-w-0">
+            <span className="text-[10px] text-slate-400 block leading-tight truncate">
+              {selectedDest.name}
+            </span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-extrabold text-emerald-400 text-sm tabular-nums">{selectedDest.eta}</span>
-              <span className="text-slate-400 text-[11px] tabular-nums">({selectedDest.distance})</span>
+              {selectedDest.eta && (
+                <span className="font-extrabold text-emerald-400 text-xs tabular-nums">
+                  {selectedDest.eta}
+                </span>
+              )}
+              {selectedDest.distance && (
+                <span className="text-slate-400 text-[11px] tabular-nums">
+                  ({selectedDest.distance})
+                </span>
+              )}
+              {typeof selectedDest.rating === 'number' && (
+                <span className="text-amber-400 text-[11px] font-bold flex items-center gap-0.5">
+                  <Star className="w-3 h-3 fill-current" />
+                  {selectedDest.rating.toFixed(1)}
+                </span>
+              )}
             </div>
           </div>
           <button
-            onClick={() => handleLaunchGoogleMaps(selectedDest.name)}
-            className="p-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition-transform active:scale-95 cursor-pointer"
+            type="button"
+            onClick={() => handleLaunchGoogleMaps(selectedDest)}
+            className="p-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition-transform active:scale-95 cursor-pointer shrink-0"
             title="Start Navigation in Google Maps"
           >
             <Navigation className="w-3.5 h-3.5" />
@@ -228,13 +334,13 @@ export const GoogleMapsApp: React.FC = () => {
         </div>
       </div>
 
-      {/* Popular Metro Destinations Quick List */}
-      <div className="space-y-1.5">
-        <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 font-display">
-          Tap Destination for Route & ETA
+      {/* Destinations Quick List */}
+      <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
+        <span className={`${easyView ? 'text-xs' : 'text-[10.5px]'} font-bold uppercase tracking-wider text-slate-400 font-display shrink-0`}>
+          Tap Destination to Focus Map &amp; Navigate
         </span>
-        <div className="flex-1 overflow-y-auto space-y-2 max-h-36 pr-1">
-          {filteredDests.map((dest) => {
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          {destinations.map((dest) => {
             const isSelected = selectedDest.id === dest.id;
             return (
               <div
@@ -242,37 +348,50 @@ export const GoogleMapsApp: React.FC = () => {
                 onClick={() => {
                   playCabinChime('tap');
                   setSelectedDest(dest);
+                  setMapCenter({ lat: dest.lat, lng: dest.lng });
+                  setInfoOpenId(dest.id);
                 }}
-                className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                className={`rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                  easyView ? 'p-3.5' : 'p-2.5'
+                } ${
                   isSelected
                     ? 'bg-slate-900 border-sky-500/70 shadow-xs'
                     : 'bg-slate-900/40 border-slate-800 hover:bg-slate-900 hover:border-slate-700'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 text-sky-400">
+                  <div className={`${easyView ? 'w-10 h-10' : 'w-8 h-8'} rounded-lg bg-slate-800 flex items-center justify-center shrink-0 text-sky-400`}>
                     {dest.category === 'Airport' && <Plane className="w-4 h-4 text-sky-400" />}
                     {dest.category === 'Downtown' && <Building className="w-4 h-4 text-amber-400" />}
                     {dest.category === 'Dining' && <Utensils className="w-4 h-4 text-emerald-400" />}
                     {dest.category === 'Attraction' && <Compass className="w-4 h-4 text-purple-400" />}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">
+                    <p className={`${easyView ? 'text-sm sm:text-base' : 'text-xs'} font-bold text-white truncate`}>
                       {dest.name}
                     </p>
-                    <p className="text-[10px] text-slate-400 truncate">
+                    <p className={`${easyView ? 'text-xs' : 'text-[10px]'} text-slate-400 truncate`}>
                       {dest.address}
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-bold text-emerald-400 tabular-nums block">
-                    {dest.eta}
-                  </span>
-                  <span className="text-[10px] text-slate-500 tabular-nums">
-                    {dest.distance}
-                  </span>
+                  {dest.eta && (
+                    <span className="text-xs font-bold text-emerald-400 tabular-nums block">
+                      {dest.eta}
+                    </span>
+                  )}
+                  {dest.distance && (
+                    <span className="text-[10px] text-slate-500 tabular-nums">
+                      {dest.distance}
+                    </span>
+                  )}
+                  {typeof dest.rating === 'number' && (
+                    <span className="text-xs font-bold text-amber-400 tabular-nums">
+                      {dest.rating.toFixed(1)} ★
+                    </span>
+                  )}
                 </div>
               </div>
             );

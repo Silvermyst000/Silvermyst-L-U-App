@@ -7,13 +7,64 @@ interface LaunchCallbacks {
   onOpenComfort?: () => void;
   onOpenWeather?: () => void;
   onSongRequest?: () => void;
+  onOpenRidePreferences?: () => void;
+  onOpenMusicCenter?: () => void;
+  onOpenExploreNearby?: () => void;
+  onOpenMiniGames?: () => void;
+  onOpenFeedback?: () => void;
   onNotifyLaunch?: (appName: string, message: string) => void;
+}
+
+export function openExternalUrl(url: string) {
+  if (!url) return;
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch {
+    window.location.href = url;
+  }
 }
 
 export function launchTabletApp(app: InstalledAppItem, callbacks: LaunchCallbacks = {}) {
   playCabinChime('tap');
 
   // Handle internal app actions
+  if (app.packageName === 'internal.preferences' || app.id === 'app-preferences') {
+    if (callbacks.onOpenRidePreferences) {
+      callbacks.onOpenRidePreferences();
+      return;
+    }
+  }
+  if (app.packageName === 'internal.music' || app.id === 'app-music-center') {
+    if (callbacks.onOpenMusicCenter) {
+      callbacks.onOpenMusicCenter();
+      return;
+    }
+  }
+  if (app.packageName === 'internal.explore' || app.id === 'app-explore') {
+    if (callbacks.onOpenExploreNearby) {
+      callbacks.onOpenExploreNearby();
+      return;
+    }
+  }
+  if (app.packageName === 'internal.games' || app.id === 'app-arcade') {
+    if (callbacks.onOpenMiniGames) {
+      callbacks.onOpenMiniGames();
+      return;
+    }
+  }
+  if (app.packageName === 'internal.feedback' || app.id === 'app-feedback') {
+    if (callbacks.onOpenFeedback) {
+      callbacks.onOpenFeedback();
+      return;
+    }
+  }
   if (app.packageName === 'internal.weather' || app.id === 'app-weather') {
     if (callbacks.onOpenWeather) {
       callbacks.onOpenWeather();
@@ -66,14 +117,14 @@ export function launchTabletApp(app: InstalledAppItem, callbacks: LaunchCallback
       // Fallback timer if app is not installed
       setTimeout(() => {
         if (app.webFallbackUrl) {
-          window.open(app.webFallbackUrl, '_blank');
+          openExternalUrl(app.webFallbackUrl);
         }
       }, 1200);
       return;
     } else {
       // Non-Android or desktop preview: open web fallback or deep link
       if (app.webFallbackUrl) {
-        window.open(app.webFallbackUrl, '_blank');
+        openExternalUrl(app.webFallbackUrl);
         return;
       } else {
         window.location.href = app.deepLinkUrl;
@@ -84,6 +135,6 @@ export function launchTabletApp(app: InstalledAppItem, callbacks: LaunchCallback
 
   // Fallback to web URL
   if (app.webFallbackUrl) {
-    window.open(app.webFallbackUrl, '_blank');
+    openExternalUrl(app.webFallbackUrl);
   }
 }

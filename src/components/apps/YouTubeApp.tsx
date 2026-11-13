@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { playCabinChime } from '../../utils/cabinAudio';
+import { openExternalUrl } from '../../utils/appLauncher';
 
 interface VideoItem {
   id: string;
@@ -79,7 +80,7 @@ export const YouTubeApp: React.FC = () => {
     if (isAndroid) {
       window.location.href = title ? `vnd.youtube://results?search_query=${q}` : 'vnd.youtube://';
     } else {
-      window.open(title ? `https://www.youtube.com/results?search_query=${q}` : 'https://www.youtube.com', '_blank');
+      openExternalUrl(title ? `https://www.youtube.com/results?search_query=${q}` : 'https://www.youtube.com');
     }
   };
 

@@ -1,12 +1,12 @@
 {
-  "projectId": "quadratic-amphora-gbcxw",
-  "appId": "1:447647212050:web:2ff2453932c1577b9d6ecb",
-  "apiKey": "AIzaSyCbaekDj4DbLVqHeu8f9QCinpZPdYq_FVI",
-  "authDomain": "quadratic-amphora-gbcxw.firebaseapp.com",
+  "projectId": "gen-lang-client-0942519627",
+  "appId": "1:695542080848:web:ce6979cfe9df281f05b855",
+  "apiKey": "AIzaSyCiZMuMxNZaNK_bmEtYE6m_kVQWF2EUL3E",
+  "authDomain": "gen-lang-client-0942519627.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-silvermistmultis-4adf4900-8514-4406-b2f4-96094b68c52e",
-  "storageBucket": "quadratic-amphora-gbcxw.firebasestorage.app",
-  "messagingSenderId": "447647212050",
+  "storageBucket": "gen-lang-client-0942519627.firebasestorage.app",
+  "messagingSenderId": "695542080848",
   "measurementId": "",
-  "oAuthClientId": "447647212050-i93fj3drk2m9p5ps0k37ms3r4rc05uod.apps.googleusercontent.com",
+  "oAuthClientId": "695542080848-ee7dpbb4b7f170p3ip55sq1k5imsuj40.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

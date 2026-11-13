@@ -147,9 +147,17 @@ export const Screensaver: React.FC<ScreensaverProps> = ({
         <Settings className="w-5 h-5" />
       </button>
 
-      {/* Bottom Area: Carousel Dots & "Touch anywhere to start the screen" Button */}
+      {/* Bottom Area: "Touch anywhere to start the screen" Button followed by Carousel Dots */}
       <div className="absolute bottom-6 sm:bottom-8 left-0 right-0 flex flex-col items-center gap-3.5 z-20 pointer-events-none">
-        {/* Slide Indicator Dots */}
+        {/* The Button requested by Carlos: "Touch anywhere to start the screen" */}
+        <div
+          onClick={handleWakeUp}
+          className="pointer-events-auto inline-flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-500 hover:brightness-110 active:scale-97 text-white font-extrabold text-sm sm:text-base tracking-tight shadow-2xl border border-white/50 cursor-pointer animate-pulse transition-all min-h-[52px]"
+        >
+          <span>Touch anywhere to start the screen</span>
+        </div>
+
+        {/* Slide Indicator Dots underneath the button */}
         {slides.length > 1 && (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -173,14 +181,6 @@ export const Screensaver: React.FC<ScreensaverProps> = ({
             ))}
           </div>
         )}
-
-        {/* The Button requested by Carlos: "Touch anywhere to start the screen" */}
-        <div
-          onClick={handleWakeUp}
-          className="pointer-events-auto inline-flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-500 hover:brightness-110 active:scale-97 text-white font-extrabold text-sm sm:text-base tracking-tight shadow-2xl border border-white/50 cursor-pointer animate-pulse transition-all min-h-[52px]"
-        >
-          <span>Touch anywhere to start the screen</span>
-        </div>
       </div>
     </div>
   );

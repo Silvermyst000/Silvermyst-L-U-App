@@ -1,65 +1,429 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is signed in
+    // Global default deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core identity, validation, and role helpers
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidEmailKey(id) {
+      return id is string && id.size() >= 3 && id.size() <= 160 && id.matches('^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$');
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // System and public configuration documents
+    function isVerifiedEmail() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email is string;
+    }
+
+    function isMasterOwner() {
+      return isVerifiedEmail() && request.auth.token.email.lower() == 'carlos881672@gmail.com';
+    }
+
+    function isAdmin() {
+      return isMasterOwner() ||
+        (isVerifiedEmail() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isAuthorizedUser() {
+      return isAdmin() || (
+        isVerifiedEmail() &&
+        exists(/databases/$(database)/documents/authorized_users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/authorized_users/$(request.auth.uid)).data.status == 'active'
+      );
+    }
+
+    function isValidAdminMarker(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'grantedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'role', 'grantedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.role in ['owner', 'manager', 'admin'] &&
+        data.grantedAt is number;
+    }
+
+    function isValidApprovedEnrollment(data) {
+      return data.keys().hasAll(['id', 'email', 'role', 'displayName', 'status', 'addedByUid', 'addedByEmail', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'email', 'role', 'displayName', 'vehicleAssignment', 'notes', 'status', 'addedByUid', 'addedByEmail', 'enrolledUid', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() >= 3 && data.id.size() <= 160 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.role in ['owner', 'manager', 'admin', 'driver', 'editor'] &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+        data.status in ['pending_enrollment', 'enrolled', 'revoked'] &&
+        data.addedByUid is string && data.addedByUid.size() >= 1 && data.addedByUid.size() <= 128 &&
+        data.addedByEmail is string && data.addedByEmail.size() >= 3 && data.addedByEmail.size() <= 160 &&
+        data.createdAt is number &&
+        data.updatedAt is number &&
+        (!('vehicleAssignment' in data) || (data.vehicleAssignment is string && data.vehicleAssignment.size() <= 120)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 300)) &&
+        (!('enrolledUid' in data) || (data.enrolledUid is string && data.enrolledUid.size() <= 128));
+    }
+
+    function isValidAuthorizedUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'fullName', 'assignedPin', 'role', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'fullName', 'title', 'phone', 'vehicleModel', 'assignedPin', 'role', 'status', 'approvedBy', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        data.assignedPin is string && data.assignedPin.matches('^[0-9]{4}$') &&
+        data.role in ['owner', 'manager', 'admin', 'driver', 'editor'] &&
+        data.status in ['active', 'suspended'] &&
+        data.createdAt is number &&
+        data.updatedAt is number &&
+        (!('title' in data) || (data.title is string && data.title.size() <= 100)) &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 40)) &&
+        (!('vehicleModel' in data) || (data.vehicleModel is string && data.vehicleModel.size() <= 100)) &&
+        (!('approvedBy' in data) || (data.approvedBy is string && data.approvedBy.size() <= 160));
+    }
+
+    function isValidEnrollmentRequest(data) {
+      return data.keys().hasAll(['id', 'uid', 'email', 'fullName', 'phone', 'requestedRole', 'reason', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'uid', 'email', 'fullName', 'phone', 'requestedRole', 'reason', 'status', 'reviewedBy', 'reviewNote', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 40 &&
+        data.requestedRole in ['manager', 'admin', 'driver', 'editor'] &&
+        data.reason is string && data.reason.size() >= 1 && data.reason.size() <= 500 &&
+        data.status in ['pending', 'approved', 'declined'] &&
+        data.createdAt is number &&
+        data.updatedAt is number &&
+        (!('reviewedBy' in data) || (data.reviewedBy is string && data.reviewedBy.size() <= 160)) &&
+        (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 300));
+    }
+
+    function isValidLicenseKeyId(key) {
+      return key is string && key.size() >= 8 && key.size() <= 40 && key.matches('^SLV-[A-Z0-9\\-]+$');
+    }
+
+    function isValidLicenseInquiry(data) {
+      return data.keys().hasAll(['id', 'companyName', 'contactName', 'email', 'phone', 'fleetSize', 'packageTier', 'notes', 'status', 'submittedAt']) &&
+        data.keys().hasOnly(['id', 'companyName', 'contactName', 'email', 'phone', 'fleetSize', 'packageTier', 'billingCycle', 'licenseKey', 'notes', 'status', 'submittedAt']) &&
+        data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
+        data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 120 &&
+        data.contactName is string && data.contactName.size() >= 1 && data.contactName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 40 &&
+        data.fleetSize in ['1', '2-5', '6-20', '21+'] &&
+        data.packageTier in ['single_vehicle', 'fleet_pro', 'enterprise_whitelabel'] &&
+        (!('billingCycle' in data) || data.billingCycle in ['monthly', 'annual']) &&
+        (!('licenseKey' in data) || isValidLicenseKeyId(data.licenseKey)) &&
+        data.notes is string && data.notes.size() <= 600 &&
+        data.status in ['new', 'contacted', 'licensed'] &&
+        data.submittedAt is number;
+    }
+
+    function isValidPlatformLicense(data) {
+      return data.keys().hasAll(['id', 'companyName', 'packageTier', 'maxVehicles', 'paymentStatus', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'companyName', 'packageTier', 'maxVehicles', 'paymentStatus', 'createdAt', 'updatedAt']) &&
+        isValidLicenseKeyId(data.id) &&
+        data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 120 &&
+        data.packageTier in ['single_vehicle', 'fleet_pro', 'enterprise_whitelabel'] &&
+        data.maxVehicles is number && data.maxVehicles >= 1 && data.maxVehicles <= 5000 &&
+        data.paymentStatus in ['paid', 'revoked'] &&
+        data.createdAt is number &&
+        data.updatedAt is number;
+    }
+
+    // Connectivity health-check doc
+    match /test/{docId} {
+      allow get: if isValidId(docId) && docId == 'connection';
+    }
+
+    // Verified Admin markers
+    match /admins/{uid} {
+      allow get: if isVerifiedEmail() && isValidId(uid) && (request.auth.uid == uid || isMasterOwner());
+      allow list: if isMasterOwner();
+      allow create: if isValidId(uid) && isValidAdminMarker(incoming()) && (
+        isMasterOwner() ||
+        (
+          isVerifiedEmail() &&
+          request.auth.uid == uid &&
+          incoming().uid == request.auth.uid &&
+          incoming().email.lower() == request.auth.token.email.lower() &&
+          exists(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())) &&
+          get(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())).data.status == 'pending_enrollment' &&
+          get(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())).data.role in ['admin', 'manager'] &&
+          incoming().role == get(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())).data.role
+        )
+      );
+      allow update: if isMasterOwner() && isValidId(uid) && isValidAdminMarker(incoming());
+      allow delete: if isMasterOwner() && isValidId(uid) && uid != request.auth.uid;
+    }
+
+    // Owner-managed Approve List governing who may create an account
+    match /approved_enrollments/{emailKey} {
+      allow get: if isVerifiedEmail() && isValidEmailKey(emailKey) &&
+        (emailKey == request.auth.token.email.lower() || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidEmailKey(emailKey) && isValidApprovedEnrollment(incoming()) &&
+        incoming().id == emailKey &&
+        incoming().email.lower() == emailKey &&
+        incoming().addedByUid == request.auth.uid;
+      allow update: if isValidEmailKey(emailKey) && isValidApprovedEnrollment(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            isVerifiedEmail() &&
+            emailKey == request.auth.token.email.lower() &&
+            existing().status == 'pending_enrollment' &&
+            incoming().status == 'enrolled' &&
+            incoming().role == existing().role &&
+            incoming().enrolledUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'enrolledUid', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidEmailKey(emailKey);
+    }
+
+    // Active enrolled user accounts (strictly restricted to owner or allowlisted email)
+    match /authorized_users/{uid} {
+      allow get: if isVerifiedEmail() && isValidId(uid) && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedEmail() && isValidId(uid) && request.auth.uid == uid &&
+        isValidAuthorizedUser(incoming()) &&
+        incoming().uid == request.auth.uid &&
+        incoming().email.lower() == request.auth.token.email.lower() &&
+        incoming().status == 'active' &&
+        (
+          (isMasterOwner() && incoming().role == 'owner') ||
+          (
+            exists(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())) &&
+            get(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())).data.status == 'pending_enrollment' &&
+            incoming().role == get(/databases/$(database)/documents/approved_enrollments/$(request.auth.token.email.lower())).data.role
+          )
+        );
+      allow update: if isVerifiedEmail() && isValidId(uid) &&
+        isValidAuthorizedUser(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == uid &&
+            existing().status == 'active' &&
+            incoming().role == existing().role &&
+            incoming().status == existing().status &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'title', 'phone', 'vehicleModel', 'assignedPin', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(uid);
+    }
+
+    // Enrollment access requests submitted by non-allowlisted signed-in visitors
+    match /enrollment_requests/{requestId} {
+      allow get: if isVerifiedEmail() && isValidId(requestId) && (requestId == request.auth.uid || isAdmin());
+      allow list: if isAdmin() || (isVerifiedEmail() && resource.data.uid == request.auth.uid);
+      allow create: if isVerifiedEmail() && isValidId(requestId) && requestId == request.auth.uid &&
+        isValidEnrollmentRequest(incoming()) &&
+        incoming().id == request.auth.uid &&
+        incoming().uid == request.auth.uid &&
+        incoming().email.lower() == request.auth.token.email.lower() &&
+        incoming().status == 'pending';
+      allow update: if isVerifiedEmail() && isValidId(requestId) &&
+        isValidEnrollmentRequest(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == requestId &&
+            existing().status == 'pending' &&
+            incoming().status == 'pending' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'requestedRole', 'reason', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(requestId);
+    }
+
+    // Commercial License & Fleet Demo Inquiries (Write-only create for public prospects; Admin-only read/manage)
+    match /license_inquiries/{inquiryId} {
+      allow get: if isAdmin() && isValidId(inquiryId);
+      allow list: if isAdmin();
+      allow create: if isValidId(inquiryId) &&
+        isValidLicenseInquiry(incoming()) &&
+        incoming().id == inquiryId &&
+        incoming().status == 'new' &&
+        !('licenseKey' in incoming());
+      allow update: if isAdmin() && isValidId(inquiryId) &&
+        isValidLicenseInquiry(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().submittedAt == existing().submittedAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'licenseKey']);
+      allow delete: if isAdmin() && isValidId(inquiryId);
+    }
+
+    // Paid Platform License Keys (Exact-key verification lookup; Admin-only list/write/revoke)
+    match /platform_licenses/{licenseKey} {
+      allow get: if isValidLicenseKeyId(licenseKey);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidLicenseKeyId(licenseKey) &&
+        isValidPlatformLicense(incoming()) &&
+        incoming().id == licenseKey;
+      allow update: if isAdmin() && isValidLicenseKeyId(licenseKey) &&
+        isValidPlatformLicense(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['paymentStatus', 'maxVehicles', 'updatedAt']);
+      allow delete: if isAdmin() && isValidLicenseKeyId(licenseKey);
+    }
+
+    // Protected Fleet & Kiosk Collections (Zero public access)
     match /system/{docId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read: if isAuthorizedUser() && isValidId(docId);
+      allow write: if isAdmin() && isValidId(docId);
     }
 
-    // Driver accounts & profiles (publicly read active driver profile; drivers/admins can update)
+    match /system_settings/{docId} {
+      allow read, write: if isAuthorizedUser() && isValidId(docId);
+    }
+
     match /drivers/{driverId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow get: if isAuthorizedUser() && isValidId(driverId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(driverId);
     }
 
-    // Tablet registrations & device status
     match /tablets/{tabletId} {
-      allow read: if true;
-      allow write: if true; // Allows tablets to heartbeat and sync status
+      allow get: if isAuthorizedUser() && isValidId(tabletId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(tabletId);
     }
 
-    // Passenger Requests (passengers can create from kiosk without auth; admins/drivers read and update)
     match /requests/{requestId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if true;
+      allow get: if isAuthorizedUser() && isValidId(requestId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(requestId);
     }
 
-    // Service inquiries submitted by passengers
+    match /feedback/{feedbackId} {
+      allow get: if isAuthorizedUser() && isValidId(feedbackId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(feedbackId);
+    }
+
     match /inquiries/{inquiryId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isSignedIn();
+      allow get: if isAuthorizedUser() && isValidId(inquiryId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(inquiryId);
     }
 
-    // Administrator internal communications & messages
-    match /messages/{messageId} {
-      allow read, write: if isSignedIn();
+    match /installed_apps/{appId} {
+      allow get: if isAuthorizedUser() && isValidId(appId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(appId);
     }
 
-    // Announcements
-    match /announcements/{announcementId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+    match /quick_connects/{itemId} {
+      allow get: if isAuthorizedUser() && isValidId(itemId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(itemId);
     }
 
-    // Activity logs & audit trail
-    match /activityLogs/{logId} {
-      allow read: if isSignedIn();
-      allow create: if true;
-      allow update, delete: if false;
+    match /gallery_albums/{albumId} {
+      allow get: if isAuthorizedUser() && isValidId(albumId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(albumId);
     }
 
-    // Default fallback
-    match /{document=**} {
-      allow read: if true;
-      allow write: if isSignedIn();
+    match /gallery_photos/{photoId} {
+      allow get: if isAuthorizedUser() && isValidId(photoId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(photoId);
+    }
+
+    match /admin_messages/{messageId} {
+      allow get: if isAuthorizedUser() && isValidId(messageId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(messageId);
+    }
+
+    match /checklists/{checklistId} {
+      allow get: if isAuthorizedUser() && isValidId(checklistId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(checklistId);
+    }
+
+    match /schedules/{scheduleId} {
+      allow get: if isAuthorizedUser() && isValidId(scheduleId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(scheduleId);
+    }
+
+    match /kiosk_commands/{commandId} {
+      allow get: if isAuthorizedUser() && isValidId(commandId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(commandId);
+    }
+
+    match /analytics/{eventId} {
+      allow get: if isAuthorizedUser() && isValidId(eventId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(eventId);
+    }
+
+    match /change_history/{historyId} {
+      allow get: if isAuthorizedUser() && isValidId(historyId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(historyId);
+    }
+
+    match /activity_logs/{logId} {
+      allow get: if isAuthorizedUser() && isValidId(logId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(logId);
+    }
+
+    match /marketing_popups/{popupId} {
+      allow get: if isAuthorizedUser() && isValidId(popupId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(popupId);
+    }
+
+    match /cabin_themes/{themeId} {
+      allow get: if isAuthorizedUser() && isValidId(themeId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(themeId);
+    }
+
+    match /work_shifts/{shiftId} {
+      allow get: if isAuthorizedUser() && isValidId(shiftId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(shiftId);
+    }
+
+    match /shift_change_requests/{requestId} {
+      allow get: if isAuthorizedUser() && isValidId(requestId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(requestId);
+    }
+
+    match /translations/{translationId} {
+      allow get: if isAuthorizedUser() && isValidId(translationId);
+      allow list: if isAuthorizedUser();
+      allow write: if isAuthorizedUser() && isValidId(translationId);
     }
   }
 }

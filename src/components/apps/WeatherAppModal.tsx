@@ -25,6 +25,7 @@ import {
   Sunset,
 } from 'lucide-react';
 import { playCabinChime } from '../../utils/cabinAudio';
+import { openExternalUrl } from '../../utils/appLauncher';
 import { CabinMessage } from '../../types/kiosk';
 
 interface WeatherAppModalProps {
@@ -477,7 +478,7 @@ export const WeatherAppModal: React.FC<WeatherAppModalProps> = ({
       if (isAndroid) {
         window.location.href = 'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_WEATHER;end';
       } else {
-        window.open(`https://weather.com/weather/today/l/${zipInput}`, '_blank');
+        openExternalUrl(`https://weather.com/weather/today/l/${zipInput}`);
       }
     }
   };

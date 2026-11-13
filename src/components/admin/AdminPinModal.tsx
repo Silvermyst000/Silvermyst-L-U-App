@@ -1,23 +1,36 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Lock, Delete, X, KeyRound, AlertCircle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Lock, Delete, X, KeyRound, AlertCircle, Sparkles, UserCheck } from 'lucide-react';
 import { playCabinChime } from '../../utils/cabinAudio';
+import { DriverProfile } from '../../types/kiosk';
 
 interface AdminPinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (authenticatedDriver?: DriverProfile) => void;
   savedPin?: string;
+  drivers?: DriverProfile[];
+  activeDriverId?: string;
 }
 
 export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  savedPin = '1229',
+  savedPin = '0000',
+  drivers = [],
+  activeDriverId,
 }) => {
   const [pin, setPin] = useState<string>('');
   const [isError, setIsError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPin('');
+      setIsError(false);
+      setErrorMessage(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -30,21 +43,34 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
       const nextPin = pin + digit;
       setPin(nextPin);
 
-      // If 4th digit entered, auto-verify
+      // If 4th digit entered, auto-verify against profile-specific PINs
       if (nextPin.length === 4) {
-        if (nextPin === savedPin) {
+        const activeDriver = activeDriverId ? drivers.find((d) => d.id === activeDriverId) : undefined;
+        let matchedDriver: DriverProfile | undefined;
+
+        if (activeDriver && (activeDriver.adminPin || '0000') === nextPin) {
+          matchedDriver = activeDriver;
+        } else {
+          matchedDriver = drivers.find((d) => (d.adminPin || '0000') === nextPin);
+        }
+
+        const isFallbackMatch = drivers.length === 0 && nextPin === (savedPin || '0000');
+
+        if (matchedDriver || isFallbackMatch) {
           playCabinChime('acknowledged');
           setTimeout(() => {
             setPin('');
-            onSuccess();
+            onSuccess(matchedDriver);
           }, 200);
         } else {
           setIsError(true);
           setErrorMessage('Incorrect PIN. Please try again.');
           playCabinChime('comfort');
+          // Reset error animation state after exactly 3 bounces (1050ms)
           setTimeout(() => {
+            setIsError(false);
             setPin('');
-          }, 800);
+          }, 1050);
         }
       }
     }
@@ -70,11 +96,16 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
       }}
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300"
     >
+      <style>{`
+        @keyframes pinBounce3 {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-12px); }
+        }
+      `}</style>
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-sm bg-slate-950 text-white rounded-3xl p-6 sm:p-7 border border-purple-800/60 shadow-[0_0_50px_rgba(147,51,234,0.3)] space-y-5 text-center relative transition-transform ${
-          isError ? 'animate-bounce' : ''
-        }`}
+        style={isError ? { animation: 'pinBounce3 0.35s ease-in-out 3' } : undefined}
+        className="w-full max-w-sm bg-slate-950 text-white rounded-3xl p-6 sm:p-7 border border-purple-800/60 shadow-[0_0_50px_rgba(147,51,234,0.3)] space-y-5 text-center relative transition-transform"
       >
         {/* Close Button */}
         <button
@@ -169,9 +200,9 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
           </button>
         </div>
 
-        {/* Helper Note */}
+        {/* Helper Note (No PIN ever exposed on passenger screen) */}
         <div className="pt-2 text-[11px] text-slate-500 border-t border-slate-900">
-          <span>Protected In-Cabin Host Terminal • Default PIN: <strong>1229</strong></span>
+          <span>Protected In-Cabin Host Terminal • Authorized Staff Only</span>
         </div>
       </div>
     </div>

@@ -1,0 +1,242 @@
+{
+  "entities": {
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Authorized admin/owner marker indexed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "role": { "type": "string", "enum": ["owner", "manager", "admin"] },
+        "grantedAt": { "type": "number" }
+      },
+      "required": ["uid", "email", "role", "grantedAt"]
+    },
+    "ApprovedEnrollment": {
+      "title": "ApprovedEnrollment",
+      "description": "Owner-curated approve list granting permission for a specific verified email to create an account.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "role": { "type": "string", "enum": ["owner", "manager", "admin", "driver", "editor"] },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "vehicleAssignment": { "type": "string", "maxLength": 120 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["pending_enrollment", "enrolled", "revoked"] },
+        "addedByUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "addedByEmail": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "enrolledUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "email", "role", "displayName", "status", "addedByUid", "addedByEmail", "createdAt", "updatedAt"]
+    },
+    "AuthorizedUserAccount": {
+      "title": "AuthorizedUserAccount",
+      "description": "Active enrolled user account linked to a verified UID and approved allowlist entry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "vehicleModel": { "type": "string", "maxLength": 100 },
+        "assignedPin": { "type": "string", "pattern": "^[0-9]{4}$", "minLength": 4, "maxLength": 4 },
+        "role": { "type": "string", "enum": ["owner", "manager", "admin", "driver", "editor"] },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "approvedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["uid", "email", "fullName", "assignedPin", "role", "status", "createdAt", "updatedAt"]
+    },
+    "EnrollmentAccessRequest": {
+      "title": "EnrollmentAccessRequest",
+      "description": "Access request submitted by a signed-in visitor whose email is not yet on the approve list.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "phone": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "requestedRole": { "type": "string", "enum": ["manager", "admin", "driver", "editor"] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "status": { "type": "string", "enum": ["pending", "approved", "declined"] },
+        "reviewedBy": { "type": "string", "maxLength": 160 },
+        "reviewNote": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "uid", "email", "fullName", "phone", "requestedRole", "reason", "status", "createdAt", "updatedAt"]
+    },
+    "FleetCollectionDoc": {
+      "title": "FleetCollectionDoc",
+      "description": "Protected operational fleet, kiosk, driver, request, schedule, and analytics records accessible strictly to authorized enrolled users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "LicenseInquiry": {
+      "title": "LicenseInquiry",
+      "description": "Commercial software license order and fleet demo request submitted by a prospective buyer on the public website.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 6, "maxLength": 128 },
+        "companyName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "contactName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "phone": { "type": "string", "minLength": 3, "maxLength": 40 },
+        "fleetSize": { "type": "string", "enum": ["1", "2-5", "6-20", "21+"] },
+        "packageTier": { "type": "string", "enum": ["single_vehicle", "fleet_pro", "enterprise_whitelabel"] },
+        "billingCycle": { "type": "string", "enum": ["monthly", "annual"] },
+        "licenseKey": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 600 },
+        "status": { "type": "string", "enum": ["new", "contacted", "licensed"] },
+        "submittedAt": { "type": "number" }
+      },
+      "required": ["id", "companyName", "contactName", "email", "phone", "fleetSize", "packageTier", "notes", "status", "submittedAt"]
+    },
+    "PlatformLicense": {
+      "title": "PlatformLicense",
+      "description": "Paid commercial license token verified at installation time without exposing buyer PII.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 8, "maxLength": 40, "pattern": "^SLV-[A-Z0-9\\-]+$" },
+        "companyName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "packageTier": { "type": "string", "enum": ["single_vehicle", "fleet_pro", "enterprise_whitelabel"] },
+        "maxVehicles": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["paid", "revoked"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "companyName", "packageTier", "maxVehicles", "paymentStatus", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Verified administrator UID lookup docs."
+    },
+    "/approved_enrollments/{emailKey}": {
+      "schema": { "$ref": "#/entities/ApprovedEnrollment" },
+      "description": "Owner-curated approve list governing who may create an account."
+    },
+    "/authorized_users/{uid}": {
+      "schema": { "$ref": "#/entities/AuthorizedUserAccount" },
+      "description": "Enrolled, active portal user accounts."
+    },
+    "/enrollment_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/EnrollmentAccessRequest" },
+      "description": "Visitor enrollment requests awaiting owner approval."
+    },
+    "/license_inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/LicenseInquiry" },
+      "description": "Publicly submitted commercial platform license orders and demo requests reviewed strictly by administrators."
+    },
+    "/platform_licenses/{licenseKey}": {
+      "schema": { "$ref": "#/entities/PlatformLicense" },
+      "description": "Owner-issued commercial license keys required to unlock app/APK installation."
+    },
+    "/system/{docId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "System metadata and cloud backup documents."
+    },
+    "/system_settings/{docId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Fleet kiosk theme, language, and configuration settings."
+    },
+    "/drivers/{driverId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Fleet driver profiles."
+    },
+    "/tablets/{tabletId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Kiosk tablet devices and heartbeats."
+    },
+    "/requests/{requestId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Passenger comfort and song requests."
+    },
+    "/feedback/{feedbackId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Passenger ratings and reviews."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Service and booking inquiries."
+    },
+    "/installed_apps/{appId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Configured kiosk launcher applications."
+    },
+    "/quick_connects/{itemId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Quick connect links and payment QR portals."
+    },
+    "/gallery_albums/{albumId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Cabin photo gallery albums."
+    },
+    "/gallery_photos/{photoId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Cabin photo gallery items."
+    },
+    "/admin_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Internal driver and administrator chat messages."
+    },
+    "/checklists/{checklistId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Driver shift readiness checklists."
+    },
+    "/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Scheduled announcements and broadcasts."
+    },
+    "/kiosk_commands/{commandId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Remote tablet kiosk commands."
+    },
+    "/analytics/{eventId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Fleet usage analytics events."
+    },
+    "/change_history/{historyId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Configuration change snapshots for rollback."
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Audit logs."
+    },
+    "/marketing_popups/{popupId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Seasonal marketing and event popups."
+    },
+    "/cabin_themes/{themeId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Custom cabin theme configurations."
+    },
+    "/work_shifts/{shiftId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Driver scheduled work shifts."
+    },
+    "/shift_change_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Driver shift swap and schedule change requests."
+    },
+    "/translations/{translationId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Custom bilingual dictionary overrides."
+    },
+    "/test/{docId}": {
+      "schema": { "$ref": "#/entities/FleetCollectionDoc" },
+      "description": "Connectivity verification document."
+    }
+  }
+}

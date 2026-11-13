@@ -26,10 +26,17 @@ import { MoreAppsDrawerModal, AppDrawerItem } from './apps/MoreAppsDrawerModal';
 import { WeatherAppModal } from './apps/WeatherAppModal';
 import { FlightTrackerModal } from './apps/FlightTrackerModal';
 import { FareCalculatorModal } from './apps/FareCalculatorModal';
+import { RidePreferencesModal } from './apps/RidePreferencesModal';
+import { MusicRequestModal } from './apps/MusicRequestModal';
+import { ExploreNearbyModal } from './apps/ExploreNearbyModal';
+import { MiniGamesModal } from './apps/MiniGamesModal';
+import { PassengerFeedbackModal } from './apps/PassengerFeedbackModal';
 import { PhotoLightboxModal } from './PhotoLightboxModal';
 import { CARLOS_PHOTO_GALLERY } from '../data/mockData';
-import { PlaylistTrack, SongRequest, CabinMessage, InstalledAppItem } from '../types/kiosk';
+import { PlaylistTrack, SongRequest, CabinMessage, InstalledAppItem, RidePreferenceSelection, PassengerFeedback, SupportedLanguage } from '../types/kiosk';
 import { playCabinChime } from '../utils/cabinAudio';
+import { cloudSync } from '../services/cloudSync';
+import { KIOSK_TRANSLATIONS } from '../data/cabinThemes';
 
 interface LeftAppsHubProps {
   tracks?: PlaylistTrack[];
@@ -44,6 +51,11 @@ interface LeftAppsHubProps {
   onSendMessage: (msg: Omit<CabinMessage, 'id' | 'sentAt' | 'status'>) => void;
   onOpenGallery?: () => void;
   installedApps?: InstalledAppItem[];
+  activeDriverName?: string;
+  activeDriverId?: string;
+  onSubmitFeedback?: (feedback: Omit<PassengerFeedback, 'id' | 'submittedAt'>) => void;
+  language?: SupportedLanguage;
+  easyView?: boolean;
 }
 
 export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
@@ -59,7 +71,13 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
   onSendMessage,
   onOpenGallery,
   installedApps = [],
+  activeDriverName = 'Carlos',
+  activeDriverId = 'carlos-01',
+  onSubmitFeedback,
+  language = 'en',
+  easyView = false,
 }) => {
+  const t = KIOSK_TRANSLATIONS[language] || KIOSK_TRANSLATIONS.en;
   const [activeApp, setActiveApp] = useState<'launcher' | 'maps' | 'youtube' | 'translate' | 'gallery' | 'comfort' | 'trivia' | 'guide'>('launcher');
 
   // Modals for "More Apps Available"
@@ -68,43 +86,48 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
   const [isFlightOpen, setIsFlightOpen] = useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [isWifiOpen, setIsWifiOpen] = useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  const [isMusicCenterOpen, setIsMusicCenterOpen] = useState(false);
+  const [isExploreOpen, setIsExploreOpen] = useState(false);
+  const [isMiniGamesOpen, setIsMiniGamesOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [hubGalleryIndex, setHubGalleryIndex] = useState(0);
   const [isHubLightboxOpen, setIsHubLightboxOpen] = useState(false);
 
   const primaryTabs = [
     {
       id: 'launcher',
-      name: 'Apps & Games',
+      name: t.appsAndGames,
       icon: <Gamepad2 className="w-4.5 h-4.5 text-indigo-500" />,
       activeColor: 'text-indigo-500',
     },
     {
       id: 'maps',
-      name: 'Google Maps',
+      name: t.googleMaps,
       icon: <MapPin className="w-4.5 h-4.5 text-blue-500" />,
       activeColor: 'text-blue-500',
     },
     {
       id: 'gallery',
-      name: 'Photo Gallery',
+      name: t.photoGallery,
       icon: <ImageIcon className="w-4.5 h-4.5 text-amber-500" />,
       activeColor: 'text-amber-500',
     },
     {
       id: 'youtube',
-      name: 'YouTube',
+      name: t.youtube,
       icon: <Play className="w-4.5 h-4.5 fill-red-500 text-red-500" />,
       activeColor: 'text-red-500',
     },
     {
       id: 'translate',
-      name: 'Translate',
+      name: t.translate,
       icon: <Globe className="w-4.5 h-4.5 text-sky-400" />,
       activeColor: 'text-sky-400',
     },
     {
       id: 'comfort',
-      name: 'Cabin Comfort',
+      name: t.comfort,
       icon: <SlidersHorizontal className="w-4.5 h-4.5 text-teal-400" />,
       activeColor: 'text-teal-400',
     },
@@ -127,10 +150,10 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-950 p-4 md:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs transition-colors overflow-hidden">
+    <div className="flex flex-col h-full cabin-card p-3.5 sm:p-4 md:p-5 rounded-3xl border shadow-sm transition-colors overflow-hidden">
       {/* Top Apps Bar with Compact Square Icon for More Apps */}
-      <div className="flex items-center justify-between gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shrink-0 mb-3.5 overflow-x-auto">
-        <div className="flex items-center gap-1.5 overflow-x-auto min-w-0">
+      <div className="flex items-center justify-between gap-2 p-1.5 rounded-2xl cabin-panel border shrink-0 mb-3.5 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 scrollbar-none">
           {primaryTabs.map((tab) => {
             const isActive = activeApp === tab.id;
             return (
@@ -140,10 +163,14 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
                   playCabinChime('tap');
                   setActiveApp(tab.id as typeof activeApp);
                 }}
-                className={`flex items-center gap-2 py-2 px-3 sm:px-3.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[42px] ${
+                className={`flex items-center gap-2 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 font-bold ${
+                  easyView
+                    ? 'py-2.5 px-4 text-sm sm:text-base min-h-[50px]'
+                    : 'py-2 px-3 sm:px-3.5 text-xs sm:text-sm min-h-[42px]'
+                } ${
                   isActive
-                    ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'cabin-primary-btn shadow-xs'
+                    : 'opacity-80 hover:opacity-100'
                 }`}
               >
                 <span>{tab.icon}</span>
@@ -159,7 +186,7 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
             playCabinChime('tap');
             setIsMoreAppsOpen(true);
           }}
-          className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
+          className="w-11 h-11 rounded-xl cabin-primary-btn hover:brightness-110 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
           aria-label="More apps available"
           title="More Apps Available"
         >
@@ -180,10 +207,18 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
             onOpenWifi={() => setIsWifiOpen(true)}
             onOpenComfort={() => setActiveApp('comfort')}
             onOpenWeather={() => setIsWeatherOpen(true)}
+            onOpenRidePreferences={() => setIsPreferencesOpen(true)}
+            onOpenMusicCenter={() => setIsMusicCenterOpen(true)}
+            onOpenExploreNearby={() => setIsExploreOpen(true)}
+            onOpenMiniGames={() => setIsMiniGamesOpen(true)}
+            onOpenFeedback={() => setIsFeedbackOpen(true)}
+            activeDriverName={activeDriverName}
+            language={language}
+            easyView={easyView}
           />
         )}
 
-        {activeApp === 'maps' && <GoogleMapsApp />}
+        {activeApp === 'maps' && <GoogleMapsApp easyView={easyView} />}
 
         {activeApp === 'gallery' && (
           <div className="flex flex-col h-full space-y-3 bg-slate-950 text-white rounded-2xl p-4 border border-slate-800 overflow-hidden">
@@ -191,11 +226,11 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-bold text-white font-display">
-                  In-Cabin Photo Gallery
+                  {t.photoGallery}
                 </h3>
               </div>
               <span className="text-[11px] text-slate-400">
-                5 High-Resolution Photos
+                5 HD
               </span>
             </div>
 
@@ -279,6 +314,9 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
           <ComfortAndMessages
             messages={messages}
             onSendMessage={onSendMessage}
+            language={language}
+            driverName={activeDriverName}
+            easyView={easyView}
           />
         )}
 
@@ -332,6 +370,63 @@ export const LeftAppsHub: React.FC<LeftAppsHubProps> = ({
           </div>
         </div>
       )}
+      {/* Ride Preferences Modal */}
+      <RidePreferencesModal
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
+        driverName={activeDriverName}
+        onSubmit={(prefs) => {
+          const notesText = prefs.additionalNotes ? ` | Note: "${prefs.additionalNotes}"` : '';
+          const amenitiesText = prefs.refreshments.length > 0 ? ` | Amenities: ${prefs.refreshments.join(', ')}` : '';
+          onSendMessage({
+            type: 'comfort',
+            text: `Ride Preferences: ${prefs.atmosphere} ride, ${prefs.musicVibe} vibe, Temp: ${prefs.temperature} (${prefs.targetTempF}°F), Windows: ${prefs.windowSetting}${amenitiesText}${notesText}`,
+          });
+        }}
+      />
+
+      {/* Music Request Center Modal */}
+      <MusicRequestModal
+        isOpen={isMusicCenterOpen}
+        onClose={() => setIsMusicCenterOpen(false)}
+        onSubmitSongRequest={onSubmitSongRequest}
+        existingRequests={songRequests}
+        driverName={activeDriverName}
+      />
+
+      {/* Explore Nearby & Local Highlights Modal */}
+      <ExploreNearbyModal
+        isOpen={isExploreOpen}
+        onClose={() => setIsExploreOpen(false)}
+        driverName={activeDriverName}
+        onRequestStop={(dest) => {
+          onSendMessage({
+            type: 'custom',
+            text: `Passenger requested route stop at: "${dest}"`,
+          });
+        }}
+      />
+
+      {/* Cabin Arcade Touchscreen Mini Games */}
+      <MiniGamesModal
+        isOpen={isMiniGamesOpen}
+        onClose={() => setIsMiniGamesOpen(false)}
+      />
+
+      {/* Passenger Feedback & 5-Star Review Modal */}
+      <PassengerFeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        driverId={activeDriverId}
+        driverName={activeDriverName}
+        onSubmitFeedback={(fb) => {
+          if (onSubmitFeedback) {
+            onSubmitFeedback(fb);
+          } else {
+            cloudSync.submitPassengerFeedback(fb);
+          }
+        }}
+      />
     </div>
   );
 };

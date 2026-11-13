@@ -12,6 +12,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { playCabinChime, cabinSynth } from '../../utils/cabinAudio';
+import { openExternalUrl } from '../../utils/appLauncher';
 import { SongRequest } from '../../types/kiosk';
 
 interface SpotifyAppProps {
@@ -97,7 +98,7 @@ export const SpotifyApp: React.FC<SpotifyAppProps> = ({ onSongRequest }) => {
     if (isAndroid) {
       window.location.href = 'spotify:';
     } else {
-      window.open('https://open.spotify.com', '_blank');
+      openExternalUrl('https://open.spotify.com');
     }
   };
 
